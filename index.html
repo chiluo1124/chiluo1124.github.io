@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>诸神愚戏 · 信仰游戏</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a0812; --card:#181530; --card2:#201b3d;
+  --gold:#d4af37; --gold2:#f5d76e; --blood:#c0392b;
+  --text:#e8e4d8; --dim:#8a86a3;
+  --civil:#d4af37; --life:#4caf7d; --sink:#9b59b6;
+  --chaos:#e74c3c; --void:#b8b8d1; --exist:#5dade2;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(ellipse at 20% -5%, rgba(90,60,160,.28), transparent 55%),
+    radial-gradient(ellipse at 85% 105%, rgba(160,60,90,.20), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:"Kaiti SC","STKaiti","KaiTi","Noto Serif SC","Songti SC",serif;
+  font-size:16px; height:100dvh; overflow:hidden;
+}
+::-webkit-scrollbar{width:0;height:0}
+.view{display:none;height:100%}
+.view.active{display:flex;flex-direction:column}
+.wrap{flex:1;overflow-y:auto;padding:16px}
+.card{background:var(--card);border:1px solid rgba(212,175,55,.22);border-radius:14px;padding:16px;margin-bottom:12px}
+input,textarea{width:100%;background:var(--card);border:1px solid rgba(212,175,55,.3);color:var(--text);padding:11px 12px;border-radius:9px;font-family:inherit;font-size:15px}
+textarea{resize:none;line-height:1.6}
+.btn{display:block;width:100%;background:linear-gradient(135deg,#8a6d1f,#d4af37);color:#1a1408;border:none;padding:12px;border-radius:9px;font-family:inherit;font-size:16px;font-weight:bold;margin-top:10px;letter-spacing:2px}
+.btn.ghost{background:transparent;border:1px solid rgba(212,175,55,.45);color:var(--gold)}
+.btn.blood{background:linear-gradient(135deg,#6e1f1f,#c0392b);color:#ffe}
+.btn.sm{width:auto;display:inline-block;padding:8px 16px;margin:0;font-size:14px;letter-spacing:0}
+.btn:disabled{opacity:.4}
+.dim{color:var(--dim);font-size:13px}
+.err{color:#e74c3c;font-size:13px;margin-top:8px;min-height:18px}
+
+/* ---------- 登录 ---------- */
+#view-auth{align-items:center;justify-content:center;padding:24px;text-align:center}
+.eye{font-size:46px;color:var(--gold);text-shadow:0 0 24px rgba(212,175,55,.8);margin-bottom:8px;animation:breath 3s ease-in-out infinite}
+@keyframes breath{0%,100%{opacity:.75}50%{opacity:1}}
+.game-title{font-size:38px;letter-spacing:10px;color:var(--gold2);text-shadow:0 0 26px rgba(212,175,55,.55)}
+.subtitle{letter-spacing:6px;color:var(--dim);margin:8px 0 26px;font-size:14px}
+#view-auth .card{width:100%;max-width:380px;text-align:left}
+.tip{margin-top:14px;font-size:12px;color:var(--dim);line-height:1.7}
+
+/* ---------- 答题 ---------- */
+#quiz-progress{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:14px}
+#quiz-progress i{display:block;height:100%;background:linear-gradient(90deg,#8a6d1f,var(--gold2));transition:width .3s}
+#quiz-num{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-bottom:10px}
+#quiz-q{background:var(--card);border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:18px;font-size:17px;line-height:1.7;margin-bottom:14px;letter-spacing:1px}
+.quiz-opt{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:11px;padding:13px 14px;margin-bottom:9px;font-family:inherit;font-size:15px;line-height:1.5;cursor:pointer}
+.quiz-opt:active{border-color:var(--gold)}
+.quiz-opt.sel{border-color:var(--gold);background:linear-gradient(135deg,#3a2f14,#2a2210);color:var(--gold2)}
+
+/* ---------- 浮空卡牌 ---------- */
+#view-cards{align-items:flex-start;justify-content:center;padding:10px 20px;overflow-y:auto}
+.deck-title{color:var(--gold2);font-size:20px;letter-spacing:4px;margin-top:4px;text-align:center}
+.deck-sub{color:var(--dim);font-size:13px;margin:6px 0 12px;letter-spacing:1px;text-align:center}
+#deck-box{position:relative;width:min(78vw,290px);height:min(56vh,350px);margin:4px auto 0}
+.gcard{position:absolute;inset:0;border-radius:18px;padding:22px 18px;
+  background:linear-gradient(160deg,#221c44,#14102a 70%);
+  border:1px solid rgba(212,175,55,.35);
+  box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 30px rgba(212,175,55,.12);
+  display:flex;flex-direction:column;transition:transform .25s,opacity .25s;user-select:none}
+.gcard.top{animation:floaty 3.2s ease-in-out infinite}
+@keyframes floaty{0%,100%{margin-top:0}50%{margin-top:-9px}}
+.gcard .gc-path{font-size:12px;letter-spacing:3px;color:var(--dim)}
+.gcard .gc-name{font-size:34px;letter-spacing:6px;margin:10px 0 4px;color:var(--gold2);text-shadow:0 0 18px rgba(212,175,55,.5)}
+.gcard .gc-rank{align-self:flex-start;border:1px solid var(--gold);color:var(--gold2);border-radius:5px;padding:2px 9px;font-size:13px;margin-bottom:12px}
+.gcard .gc-rank.ss{background:linear-gradient(135deg,#7a1f1f,#c0392b);color:#fff;border-color:#e74c3c}
+.gcard .gc-desc{flex:1;font-size:13.5px;line-height:1.8;color:var(--text);opacity:.92;overflow:hidden}
+.gcard .gc-quote{font-size:11.5px;color:var(--dim);margin-top:10px;font-style:italic}
+#deck-ctrl{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px auto 20px;width:100%;max-width:340px}
+.nav-arrow{width:46px;height:46px;border-radius:50%;background:var(--card2);border:1px solid rgba(212,175,55,.4);color:var(--gold);font-size:19px;font-family:inherit;flex:none}
+#deck-confirm{flex:1}
+
+/* ---------- 步骤页（命名/职业） ---------- */
+.step-title{font-size:20px;color:var(--gold2);letter-spacing:3px;margin-bottom:4px}
+.step-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid rgba(255,255,255,.1);border-left:4px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:10px;color:var(--text);font-family:inherit;cursor:pointer}
+.opt .t{font-size:17px;font-weight:bold;letter-spacing:2px}
+.opt .d{font-size:13px;color:var(--dim);margin-top:5px;line-height:1.6}
+.opt:active{transform:scale(.98)}
+
+/* ---------- 主框架 ---------- */
+#app-header{padding:12px 16px;border-bottom:1px solid rgba(212,175,55,.25);display:flex;justify-content:space-between;align-items:center;background:rgba(10,8,18,.9)}
+#app-header .t{color:var(--gold2);font-size:17px;letter-spacing:2px}
+#app-header .s{font-size:12px;color:var(--dim);margin-top:2px}
+.tab{display:none;flex:1;flex-direction:column;overflow:hidden}
+.tab.active{display:flex}
+#tabbar{display:flex;border-top:1px solid rgba(212,175,55,.25);background:rgba(10,8,18,.96);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar-btn{flex:1;padding:9px 0 11px;text-align:center;color:var(--dim);font-size:12px;background:none;border:none;font-family:inherit;cursor:pointer}
+.tabbar-btn .ic{display:block;font-size:19px;margin-bottom:2px}
+.tabbar-btn.on{color:var(--gold2)}
+
+/* ---------- 频道（聊天+论坛） ---------- */
+.chan-btns{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto}
+.chan-btn{flex:1;min-width:60px;padding:8px 4px;background:var(--card);border:1px solid rgba(212,175,55,.2);color:var(--dim);border-radius:8px;font-family:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
+.chan-btn.on{color:var(--gold2);border-color:var(--gold);background:var(--card2)}
+#msg-list{flex:1;overflow-y:auto;padding:14px 12px}
+.msg{margin-bottom:14px}
+.msg .who{font-size:12px;color:var(--dim);margin-bottom:4px}
+.msg .who .god{color:var(--gold);margin-right:6px}
+.msg .bub{display:inline-block;max-width:82%;padding:9px 13px;border-radius:12px;background:var(--card2);border:1px solid rgba(255,255,255,.08);line-height:1.55;word-break:break-word;text-align:left}
+.msg.me{text-align:right}
+.msg.me .bub{background:linear-gradient(135deg,#3a2f14,#2a2210);border-color:rgba(212,175,55,.5);color:var(--gold2)}
+.msg .time{font-size:11px;color:var(--dim);margin-top:3px}
+.input-bar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(212,175,55,.2);background:rgba(10,8,18,.92)}
+.input-bar input{flex:1}
+#post-list{flex:1;overflow-y:auto;padding:14px 12px}
+.post-card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
+.post-card .pt{font-size:16px;font-weight:bold;color:var(--gold2);letter-spacing:1px}
+.post-card .pp{font-size:13px;color:var(--dim);margin-top:6px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.post-card .pm{font-size:12px;color:var(--dim);margin-top:8px}
+#btn-new{position:absolute;right:16px;bottom:70px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#8a6d1f,#d4af37);color:#1a1408;border:none;font-size:26px;font-family:inherit;box-shadow:0 4px 16px rgba(212,175,55,.4);z-index:5}
+.f-sub{display:none;flex:1;flex-direction:column;overflow:hidden}
+.f-sub.active{display:flex}
+.f-scroll{flex:1;overflow-y:auto;padding:14px 12px}
+.cmt{background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.5}
+.cmt .cm{font-size:11px;color:var(--dim);margin-top:4px}
+
+/* ---------- 试炼 ---------- */
+.trial{background:var(--card);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:14px;margin-bottom:10px}
+.trial .tn{font-size:15px}
+.trial .bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:9px;overflow:hidden}
+.trial .bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6d1f,var(--gold2))}
+.trial .tp{font-size:11px;color:var(--dim);margin-top:5px}
+
+/* ---------- 面板 ---------- */
+.p-name{font-size:26px;color:var(--gold2);letter-spacing:3px;text-align:center}
+.p-tags{text-align:center;margin:8px 0 16px;font-size:13px}
+.tag{display:inline-block;border:1px solid var(--gold);color:var(--gold2);border-radius:20px;padding:3px 12px;margin:0 4px;font-size:13px}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.score-card{background:var(--card);border:1px solid rgba(212,175,55,.25);border-radius:12px;padding:14px;text-align:center}
+.score-card .n{font-size:22px;color:var(--gold2);font-weight:bold;margin-top:4px}
+.score-card .bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:9px;overflow:hidden}
+.score-card .bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6d1f,var(--gold2))}
+.sec-t{font-size:15px;color:var(--gold);letter-spacing:3px;margin:18px 0 10px;border-left:3px solid var(--gold);padding-left:8px}
+.talent{background:var(--card);border:1px solid rgba(255,255,255,.08);border-left:3px solid var(--gold);border-radius:10px;padding:12px;margin-bottom:9px}
+.talent .tt{font-size:15px;font-weight:bold}
+.talent .td{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.6}
+.rank{display:inline-block;min-width:24px;text-align:center;padding:1px 7px;border-radius:4px;font-size:12px;font-weight:bold;background:#3a2f14;color:var(--gold2);border:1px solid var(--gold)}
+.rank.ss{background:linear-gradient(135deg,#7a1f1f,#c0392b);color:#fff;border-color:#e74c3c}
+.item-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:10px 12px;margin-bottom:7px;font-size:14px;gap:8px}
+.item-row .cnt{color:var(--gold2);font-weight:bold}
+.skill-chips{display:flex;flex-wrap:wrap;gap:7px}
+.skill-chips span{border:1px solid rgba(93,173,226,.4);color:var(--exist);border-radius:16px;padding:4px 12px;font-size:13px}
+.rank-row{display:flex;justify-content:space-between;background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:10px 12px;margin-bottom:5px;font-size:14px}
+.rank-row.first{border-color:var(--gold);color:var(--gold2)}
+.rank-row.mine{background:linear-gradient(135deg,#3a2f14,#2a2210);border-color:rgba(212,175,55,.5)}
+
+/* ---------- 我的 ---------- */
+.me-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:13px 14px;margin-bottom:9px;font-size:15px;gap:10px}
+.me-row button{background:none;border:1px solid rgba(212,175,55,.4);color:var(--gold);border-radius:7px;padding:6px 13px;font-family:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+#toast{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);background:rgba(20,16,40,.96);border:1px solid var(--gold);color:var(--gold2);padding:13px 24px;border-radius:10px;font-size:15px;letter-spacing:1px;display:none;z-index:99;max-width:82%;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- ================= 登录 ================= -->
+<div class="view" id="view-auth">
+  <div class="eye">◉</div>
+  <div class="game-title">诸神愚戏</div>
+  <div class="subtitle">信 仰 游 戏 · FAITH GAME</div>
+  <div class="card">
+    <div style="letter-spacing:2px;margin-bottom:10px;color:var(--gold)">踏入命途</div>
+    <input id="uid" placeholder="代号（字母或数字，3~16位）" autocomplete="off" maxlength="16">
+    <input id="pass" type="password" placeholder="密码（至少6位）" style="margin-top:8px">
+    <button class="btn" onclick="doLogin()">登 录</button>
+    <button class="btn ghost" onclick="doRegister()">注册新信徒</button>
+    <div class="err" id="authErr"></div>
+  </div>
+  <div class="tip">诸神已降临，世界被改造为一场荒诞的信仰游戏。<br>无需邮箱，一个代号即可踏入命途。</div>
+</div>
+
+<!-- ================= 新手试炼：答题 ================= -->
+<div class="view" id="view-quiz">
+  <div class="wrap" style="max-width:520px;width:100%;margin:0 auto">
+    <div style="text-align:center;color:var(--gold2);letter-spacing:4px;margin-bottom:14px">✦ 命 途 叩 问 ✦</div>
+    <div id="quiz-num">第 1 / 30 问</div>
+    <div id="quiz-progress"><i style="width:3%"></i></div>
+    <div id="quiz-q"></div>
+    <div id="quiz-opts"></div>
+    <div class="dim" style="text-align:center;margin-top:12px;font-size:12px">凭本能作答，诸神在注视你</div>
+  </div>
+</div>
+
+<!-- ================= 浮空卡牌：选择神明 ================= -->
+<div class="view" id="view-cards">
+  <div class="deck-title">✦ 诸 神 回 应 了 你 ✦</div>
+  <div class="deck-sub">左右滑动卡牌，聆听祂们的低语，选择你的信仰</div>
+  <div id="deck-box"></div>
+  <div id="deck-ctrl">
+    <button class="nav-arrow" onclick="deckNav(-1)">‹</button>
+    <button class="btn" id="deck-confirm" onclick="confirmGod()">信 奉 此 神</button>
+    <button class="nav-arrow" onclick="deckNav(1)">›</button>
+  </div>
+</div>
+
+<!-- ================= 命名 ================= -->
+<div class="view" id="view-name">
+  <div class="wrap" style="max-width:420px;width:100%;margin:0 auto">
+    <div class="step-title">为信徒命名</div>
+    <div class="step-sub" id="name-sub"></div>
+    <div class="card">
+      <input id="pname" maxlength="12" placeholder="你的名字（12字以内，以后可改）">
+      <button class="btn" onclick="goJob()">继 续</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 选择职业 ================= -->
+<div class="view" id="view-job">
+  <div class="wrap" style="max-width:520px;width:100%;margin:0 auto">
+    <div class="step-title">选择你的职业</div>
+    <div class="step-sub">职业只有六种。没有菜的玩家，只有菜的……咳，天赋很重要。</div>
+    <div id="job-opts"></div>
+  </div>
+</div>
+
+<!-- ================= 主应用 ================= -->
+<div class="view" id="view-app">
+  <div id="app-header">
+    <div>
+      <div class="t" id="h-name">无名信徒</div>
+      <div class="s" id="h-faith"></div>
+    </div>
+    <div style="font-size:22px;color:var(--gold)">✦</div>
+  </div>
+
+  <!-- 频道：聊天五频道+论坛 -->
+  <div class="tab active" id="tab-chat" style="position:relative">
+    <div class="chan-btns" id="chan-btns"></div>
+    <div id="chat-pane" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div id="msg-list"></div>
+      <div class="input-bar" id="chat-inputbar">
+        <input id="msg-input" placeholder="向众生诉说……" onkeydown="if(event.key==='Enter')sendMsg()">
+        <button class="btn sm" onclick="sendMsg()">发送</button>
+      </div>
+    </div>
+    <div id="forum-pane" style="flex:1;display:none;flex-direction:column;overflow:hidden;position:relative">
+      <div class="f-sub active" id="forum-list-wrap">
+        <div id="post-list"></div>
+        <button id="btn-new" onclick="forumShow('forum-new')">✎</button>
+      </div>
+      <div class="f-sub" id="forum-new">
+        <div class="f-scroll">
+          <div class="card">
+            <div style="color:var(--gold);letter-spacing:2px;margin-bottom:10px">发 帖</div>
+            <input id="post-title" maxlength="40" placeholder="标题（如：血与火之歌试炼攻略）">
+            <textarea id="post-content" rows="8" placeholder="内容……" style="margin-top:8px"></textarea>
+            <button class="btn" onclick="sendPost()">发 布</button>
+            <button class="btn ghost" onclick="forumShow('forum-list-wrap')">取 消</button>
+          </div>
+        </div>
+      </div>
+      <div class="f-sub" id="forum-detail">
+        <div class="f-scroll" id="detail-body"></div>
+        <div class="input-bar">
+          <input id="cmt-input" placeholder="写下你的回复……" onkeydown="if(event.key==='Enter')sendCmt()">
+          <button class="btn sm" onclick="sendCmt()">回复</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 试炼 -->
+  <div class="tab" id="tab-trials"><div class="wrap" id="trials-body"></div></div>
+
+  <!-- 面板 -->
+  <div class="tab" id="tab-panel"><div class="wrap" id="panel-body"></div></div>
+
+  <!-- 背包 -->
+  <div class="tab" id="tab-bag"><div class="wrap" id="bag-body"></div></div>
+
+  <!-- 好友 -->
+  <div class="tab" id="tab-friends">
+    <div id="friends-main" style="flex:1;overflow-y:auto">
+      <div class="wrap" id="friends-body"></div>
+    </div>
+    <div id="dm-pane" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div id="dm-head" style="padding:10px 14px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;gap:10px"></div>
+      <div id="dm-list" style="flex:1;overflow-y:auto;padding:12px"></div>
+      <div class="input-bar">
+        <input id="dm-input" placeholder="私语……" onkeydown="if(event.key==='Enter')sendDM()">
+        <button class="btn sm" onclick="sendDM()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 我的 -->
+  <div class="tab" id="tab-me"><div class="wrap" id="me-body"></div></div>
+
+  <div id="tabbar">
+    <button class="tabbar-btn on" data-t="tab-chat" onclick="showTab('tab-chat',this)"><span class="ic">✦</span>频道</button>
+    <button class="tabbar-btn" data-t="tab-trials" onclick="showTab('tab-trials',this)"><span class="ic">⚔</span>试炼</button>
+    <button class="tabbar-btn" data-t="tab-panel" onclick="showTab('tab-panel',this)"><span class="ic">❖</span>面板</button>
+    <button class="tabbar-btn" data-t="tab-bag" onclick="showTab('tab-bag',this)"><span class="ic">▣</span>背包</button>
+    <button class="tabbar-btn" data-t="tab-friends" onclick="showTab('tab-friends',this)"><span class="ic">♦</span>好友</button>
+    <button class="tabbar-btn" data-t="tab-me" onclick="showTab('tab-me',this)"><span class="ic">⚙</span>我的</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= 命途叩问题库（100道，随机抽30道） =================
+   每题4个选项，每个选项给1~2位神明加倾向分。
+   想扩充题库：照格式往数组里加即可。 */
+const QUIZ_BANK = [
+['你在废墟中醒来，四周是死寂的街道。你的第一反应是？',
+ ['检查四周，确认危险与物资分布',{'秩序':2}],
+ ['找个隐蔽处躲起来，先观察再行动',{'沉默':2}],
+ ['大声呼喊：有人吗——',{'诞育':1,'繁荣':1}],
+ ['世界都疯了，走到哪算哪',{'混乱':2}]],
+['一位重伤的陌生人倒在你面前，他的信仰与你不同。你会？',
+ ['立即施救，生命至上',{'诞育':2}],
+ ['先搜走他的物资，再考虑救不救',{'污堕':2}],
+ ['转身离开，他的死活与我无关',{'湮灭':2}],
+ ['救他，但要求他日后报答',{'文明':0,'秩序':2}]],
+['关于谎言，你的看法是？',
+ ['谎言是弱者保护自己的盔甲',{'欺诈':2}],
+ ['偶尔的小谎无伤大雅，甚至有趣',{'混乱':2}],
+ ['谎言是对秩序的亵渎，能不说就不说',{'秩序':2}],
+ ['真相比谎言更伤人，我选择沉默',{'沉默':2}]],
+['你发现了一座失落的图书馆，里面的书？',
+ ['全部读一遍，知识就是力量',{'真理':2}],
+ ['只看历史和传记，他人的记忆最有趣',{'记忆':2}],
+ ['烧掉，知识太多会引来灾祸',{'混乱':2}],
+ ['卖掉，这时候书不如一块面包',{'繁荣':2}]],
+['战斗打响时，你通常站在？',
+ ['最前面，替队友挡下一切',{'秩序':1,'战争':2}],
+ ['最后面，输出交给我，别让我扛伤',{'真理':1,'混乱':1}],
+ ['阴影里，等一个一击必杀的机会',{'湮灭':2}],
+ ['哪里需要补哪里，我是块砖',{'诞育':2}]],
+['面对必死的局面，你会？',
+ ['战死是最荣耀的结局',{'战争':2}],
+ ['想办法骗过死亡本身',{'欺诈':2}],
+ ['平静接受，万物终有尽头',{'死亡':2}],
+ ['向任何神明祈祷，哪怕邪神',{'污堕':1,'混乱':1}]],
+['队伍里有人开始拖后腿，你的态度？',
+ ['耐心教他，谁都有新手的时候',{'繁荣':2}],
+ ['直接指出，再不改就踢出队伍',{'秩序':2}],
+ ['随他去，自然淘汰',{'沉默':2}],
+ ['利用他的弱点，让他替我探路',{'欺诈':2}]],
+['你如何看待"秩序"？',
+ ['秩序是文明的地基，不可或缺',{'秩序':2}],
+ ['秩序是强者给弱者画的牢笼',{'混乱':2}],
+ ['秩序？能吃吗？',{'痴愚':1,'混乱':1}],
+ ['无所谓秩序，我只信自己',{'欺诈':2}]],
+['深夜独处时，你最常想的是？',
+ ['今天发生的事，哪些值得记住',{'记忆':2}],
+ ['明天和意外，哪个先来',{'命运':2}],
+ ['宇宙的尽头是什么样子',{'真理':1,'湮灭':1}],
+ ['想那么多干嘛，睡觉',{'繁荣':1,'沉默':1}]],
+['如果你得到一瓶"亡者的鄙夷"（饮下后不会真正死亡），你会？',
+ ['珍藏起来，关键时刻救命',{'记忆':2}],
+ ['卖掉换物资，活着最重要',{'繁荣':2}],
+ ['当众喝掉，向死亡挑衅',{'混乱':2}],
+ ['研究它的成分，谁造的？',{'真理':2}]],
+['你的挚友欺骗了你，你会？',
+ ['原谅他，但从此留心',{'秩序':1,'生命':0,'繁荣':1}],
+ ['骗回去，让他也尝尝滋味',{'欺诈':2}],
+ ['当场揭穿，让他颜面扫地',{'真理':2}],
+ ['不再往来，就此淡忘',{'沉默':2}]],
+['你更看重哪一种力量？',
+ ['规则与律法的力量',{'秩序':2}],
+ ['毁灭与终结的力量',{'湮灭':2}],
+ ['欲望与欢愉的力量',{'污堕':2}],
+ ['时间与遗忘的力量',{'时间':2}]],
+['灾难来临前，有人向你兜售"避难所名额"，天价。你？',
+ ['攒钱买，命比什么都贵',{'繁荣':2}],
+ ['抢过来，弱者不配占有',{'战争':2}],
+ ['假装买，进去后再洗劫他',{'欺诈':2}],
+ ['不买，我自己的命自己扛',{'沉默':1,'混乱':1}]],
+['你如何看待"繁衍与新生命"？',
+ ['生命延续是世间最美的奇迹',{'诞育':2}],
+ ['是责任，也是负担',{'秩序':1}],
+ ['新生命意味着新的劳动力',{'繁荣':2}],
+ ['这个世界，不生孩子也是一种仁慈',{'腐朽':2}]],
+['在试炼中捡到一件来路不明的半神器，你会？',
+ ['上交调查，来路不明的东西危险',{'秩序':2}],
+ ['藏起来，谁问都说没见过',{'欺诈':2}],
+ ['立刻使用，先爽了再说',{'混乱':2}],
+ ['研究它的神力结构',{'真理':2}]],
+['你理想的死亡方式是？',
+ ['寿终正寝，无疾而终',{'死亡':2}],
+ ['战死沙场，轰轰烈烈',{'战争':2}],
+ ['在睡梦中悄然离去',{'沉默':2}],
+ ['我从来没想过死，我要一直活着',{'欺诈':2}]],
+['面对比自己强大得多的敌人，你会？',
+ ['投降并不丢人，活着才有机会',{'欺诈':1,'秩序':1}],
+ ['逃跑，阴影是我的朋友',{'沉默':2}],
+ ['战斗到最后一刻',{'战争':2}],
+ ['想办法让他自己杀自己',{'混乱':2}]],
+['你相信命运吗？',
+ ['相信，一切都是最好的安排',{'命运':2}],
+ ['不信，我命由我不由天',{'战争':2}],
+ ['命运是个婊……骰子，我不信它',{'欺诈':2}],
+ ['信一半，剩下靠自己改',{'真理':1,'秩序':1}]],
+['你更愿意把秘密告诉谁？',
+ ['谁也不告诉，秘密烂在肚子里',{'沉默':2}],
+ ['写在日记里，只给自己看',{'记忆':2}],
+ ['告诉最信任的人',{'诞育':2}],
+ ['编成故事讲给所有人听，真真假假',{'欺诈':2}]],
+['路过一座教堂，里面传来祈祷声。你？',
+ ['进去一起祈祷，求个心安',{'秩序':1,'命运':1}],
+ ['在门口听听就走，不信这个',{'真理':1}],
+ ['进去看看有没有什么能拿的',{'污堕':2}],
+ ['绕开，神明的东西少碰',{'腐朽':1,'沉默':1}]],
+['如果必须背叛一个人才能活下去，你选谁？',
+ ['背叛陌生人，熟人更重要',{'秩序':2}],
+ ['背叛熟人，陌生人更无辜',{'诞育':2}],
+ ['随机选一个，听天由命',{'混乱':2}],
+ ['谁挡我路就背叛谁，无需选择',{'战争':2}]],
+['你对"知识"的态度？',
+ ['知识应当被公开分享',{'真理':2}],
+ ['知识就是权力，要垄断',{'秩序':2}],
+ ['知道得越多死得越快',{'沉默':2}],
+ ['知识无所谓，直觉最准',{'混乱':2}]],
+['队伍意见出现分歧，你通常？',
+ ['听队长的，秩序高于一切',{'秩序':2}],
+ ['按我说的做，我才是对的',{'真理':1,'痴愚':1}],
+ ['少数服从多数',{'繁荣':1}],
+ ['散伙吧，谁也别管谁',{'混乱':2}]],
+['你捡到一个孩子，末世之中。你会？',
+ ['收养他，哪怕多一张嘴',{'诞育':2}],
+ ['送去救助站，然后离开',{'秩序':1}],
+ ['教他在末世生存的所有手段，包括欺骗',{'欺诈':2}],
+ ['不理会，我连自己都养不活',{'湮灭':2}]],
+['面对"永恒"，你的想法是？',
+ ['永恒是诅咒，万物终将腐朽',{'腐朽':2}],
+ ['永恒是祝福，我想永远活着',{'繁荣':2}],
+ ['永恒意味着无限的时间做无限的事',{'时间':2}],
+ ['永恒？想这些没用',{'沉默':2}]],
+['你最怕什么？',
+ ['被所有人遗忘',{'记忆':2}],
+ ['毫无意义地死去',{'战争':1,'命运':1}],
+ ['被束缚，失去自由',{'混乱':2}],
+ ['贫穷',{'繁荣':2}]],
+['如果成为神明，你最想掌管？',
+ ['生命的诞生与繁衍',{'诞育':2}],
+ ['万物的终焉与死亡',{'死亡':2}],
+ ['人心的欲望与沉沦',{'污堕':2}],
+ ['世间的秩序与律法',{'秩序':2}]],
+['你认为人性的本质是？',
+ ['善良的，只是世界逼坏了人',{'诞育':1}],
+ ['自私的，人人逐利',{'欺诈':2}],
+ ['混沌的，没有固定答案',{'混乱':2}],
+ ['愚昧的，需要被引导',{'痴愚':2}]],
+['在集市上，你最想买到什么？',
+ ['一本记载古老历史的典籍',{'记忆':2}],
+ ['一把削铁如泥的匕首',{'战争':2}],
+ ['一瓶据说能预见未来的药剂',{'命运':2}],
+ ['一顿热乎的饱饭',{'繁荣':2}]],
+['你的座右铭更接近？',
+ ['秩序长存',{'秩序':2}],
+ ['谎如昨日，嗤笑今朝',{'欺诈':2}],
+ ['时光如隙，我亦如风',{'时间':2}],
+ ['活着，才是最重要的',{'繁荣':2}]],
+['看到强者欺凌弱者，你会？',
+ ['出手制止，哪怕打不过',{'秩序':2}],
+ ['暗中帮弱者变强，让他自己复仇',{'真理':1,'欺诈':1}],
+ ['不关我事，绕路走',{'沉默':2}],
+ ['加入欺凌的一方，弱者活该',{'混乱':2}]],
+['你对"记忆"的理解？',
+ ['记忆是灵魂的一部分，比生命重要',{'记忆':2}],
+ ['痛苦的记忆不如忘掉',{'时间':2}],
+ ['记忆会骗人，我只信当下',{'真理':1}],
+ ['记忆是最没用的东西',{'湮灭':2}]],
+['一场必败的战争，你会参战吗？',
+ ['会，荣耀高于胜利',{'战争':2}],
+ ['会，立场高于生死',{'秩序':2}],
+ ['不会，活着比什么都重要',{'繁荣':2}],
+ ['看情况，有好处就去',{'欺诈':2}]],
+['你如何看待"欲望"？',
+ ['欲望是前进的动力',{'污堕':2}],
+ ['欲望需要克制，否则引火烧身',{'秩序':2}],
+ ['无所谓欲望，我早已麻木',{'沉默':2}],
+ ['欲望是虚假的，都是骗自己的',{'欺诈':1,'真理':1}]],
+['你在森林里迷路了，会？',
+ ['做记号，沿一条线走到底',{'秩序':2}],
+ ['爬到高处观察地形',{'真理':2}],
+ ['跟着感觉走，相信直觉',{'混乱':2}],
+ ['原地等待救援',{'沉默':2}]],
+['如果只能带走一样东西离开这个世界，你选？',
+ ['一段最珍贵的记忆',{'记忆':2}],
+ ['一本写满真理的书',{'真理':2}],
+ ['一件趁手的武器',{'战争':2}],
+ ['一个还能再见的承诺',{'诞育':2}]],
+['你对"沉默"的看法？',
+ ['沉默是金，言多必失',{'沉默':2}],
+ ['沉默是懦弱的表现',{'战争':2}],
+ ['沉默是最高级的谎言',{'欺诈':2}],
+ ['沉默不过是没想清楚',{'真理':2}]],
+['发现好友偷偷信仰了邪神，你会？',
+ ['劝他回头，再不然举报给审判庭',{'秩序':2}],
+ ['假装不知道，继续做朋友',{'繁荣':1}],
+ ['也去了解那个邪神，万一不错呢',{'混乱':2}],
+ ['以此要挟他，为我做事',{'欺诈':2}]],
+['你怎样看待"规则"？',
+ ['规则保护弱者，应当遵守',{'秩序':2}],
+ ['规则束缚强者，应当打破',{'混乱':2}],
+ ['规则是用来钻空子的',{'欺诈':2}],
+ ['规则是暂时的，随时会变',{'时间':2}]],
+['临终前，你最希望听到的话是？',
+ ['"你的一生很有意义"',{'真理':2}],
+ ['"我们都记得你"',{'记忆':2}],
+ ['"你死得其所"',{'战争':2}],
+ ['什么都行，让我安静地走',{'沉默':2}]],
+['你在交易中被人坑了，你会？',
+ ['认了，下次学聪明点',{'繁荣':1}],
+ ['找到他，连本带利讨回来',{'战争':2}],
+ ['设计一个更完美的骗局骗回来',{'欺诈':2}],
+ ['把这件事记下来，刻在脑子里',{'记忆':2}]],
+['如果可以窥探任何人的记忆，你会选谁？',
+ ['我最信任的人，我想更懂他',{'诞育':1}],
+ ['我最强大的敌人，知已知彼',{'战争':2}],
+ ['我自己，我想知道忘了什么',{'记忆':2}],
+ ['神明，我想知道世界的真相',{'真理':2}]],
+['面对未知的黑暗洞穴，你？',
+ ['点火把进去，未知需要探索',{'真理':2}],
+ ['丢块石头听听动静',{'秩序':2}],
+ ['转身就走，不作不死',{'繁荣':2}],
+ ['直接跳进去，刺激',{'混乱':2}]],
+['你更认同哪种团队？',
+ ['各司其职，纪律严明',{'秩序':2}],
+ ['自由散漫，但关键时刻靠谱',{'混乱':1,'欺诈':1}],
+ ['人人平等，一起商量',{'诞育':1}],
+ ['强者为尊，听最强的',{'战争':2}]],
+['你最怕别人说你什么？',
+ ['"你这个人没意思"',{'混乱':2}],
+ ['"你是个骗子"',{'欺诈':2}],
+ ['"你什么都不懂"',{'真理':2}],
+ ['"你已经老了"',{'时间':2}]],
+['世界的真相重要吗？',
+ ['重要，哪怕真相残酷',{'真理':2}],
+ ['不重要，过得开心就行',{'污堕':2}],
+ ['真相是神明的玩具，信了才傻',{'欺诈':2}],
+ ['不知道，从没想过',{'沉默':2}]],
+['你捡到一枚"命运之骰"，掷之前你会？',
+ ['诚实地问一个最想知道的问题',{'命运':2}],
+ ['藏好，关键时刻再用',{'记忆':2}],
+ ['摔了它，我才不信命',{'混乱':2}],
+ ['卖掉，迷信的人最有钱',{'繁荣':2}]],
+['什么最能让你感到快乐？',
+ ['解开一道难题的瞬间',{'真理':2}],
+ ['战胜强敌的瞬间',{'战争':2}],
+ ['谎言得逞的瞬间',{'欺诈':2}],
+ ['吃饱喝足的瞬间',{'繁荣':2}]],
+['你相信"报应"吗？',
+ ['相信，人在做天在看',{'秩序':2}],
+ ['不信，强者定义对错',{'战争':2}],
+ ['报应只是概率问题',{'命运':2}],
+ ['我是别人的报应',{'混乱':2}]],
+['如果明天就是世界末日，你今天做什么？',
+ ['和家人朋友待在一起',{'诞育':2}],
+ ['把想做的事全做一遍',{'污堕':2}],
+ ['安静地看完最后一本书',{'沉默':2}],
+ ['大笑，这世界终于疯了',{'混乱':2}]],
+['你如何看待"时间"？',
+ ['时间是最好的医生',{'时间':2}],
+ ['时间是最大的小偷',{'记忆':2}],
+ ['时间是幻觉，只存在于人心',{'真理':2}],
+ ['时间？我的表早就停了',{'沉默':2}]],
+['你最想获得哪种能力？',
+ ['让谎言成真',{'欺诈':2}],
+ ['预见死亡',{'死亡':2}],
+ ['让万物加速腐朽',{'腐朽':2}],
+ ['让时间暂停',{'时间':2}]],
+['在队伍里，你通常扮演？',
+ ['指挥者，统筹全局',{'秩序':2}],
+ ['执行者，指哪打哪',{'战争':1,'秩序':1}],
+ ['搅局者，总有点子',{'混乱':2}],
+ ['旁观者，不到关键不出手',{'沉默':2}]],
+];
+
+QUIZ_BANK.push(
+['你如何看待"审判"？',
+ ['罪行必须得到审判，无论多小',{'秩序':2}],
+ ['审判是胜利者的游戏',{'战争':2}],
+ ['审判？我先审判我自己',{'真理':2}],
+ ['人人有罪，审不过来',{'混乱':2}]],
+['你最不能忍受的生活环境是？',
+ ['混乱肮脏，没有规则',{'秩序':2}],
+ ['一潭死水，一成不变',{'混乱':2}],
+ ['人声鼎沸，没有独处空间',{'沉默':2}],
+ ['都行，我适应力很强',{'繁荣':2}]],
+['你写日记吗？',
+ ['写，记录每天的所见所思',{'记忆':2}],
+ ['不写，但重要的日子会记',{'秩序':1}],
+ ['以前写，现在不写了',{'时间':2}],
+ ['写？我的脑子就是日记',{'混乱':2}]],
+['面对死亡，你的态度是？',
+ ['敬畏但不恐惧，那是归途',{'死亡':2}],
+ ['极度恐惧，想尽一切办法活下去',{'繁荣':2}],
+ ['好奇，死亡之后是什么？',{'真理':2}],
+ ['无所谓，早死晚死都得死',{'沉默':2}]],
+['你最看重朋友的什么品质？',
+ ['忠诚可靠',{'秩序':2}],
+ ['聪明有趣',{'混乱':2}],
+ ['互相利用，各取所需',{'欺诈':2}],
+ ['陪伴，能在就行',{'诞育':1}]],
+['如果有一个按钮，按下会死一个随机的人但你能得到一百万，你？',
+ ['不按，这是谋杀',{'秩序':2}],
+ ['按，死的未必是我认识的人',{'战争':1,'混乱':1}],
+ ['按了再骗自己没按',{'欺诈':2}],
+ ['砸掉按钮，这东西不该存在',{'繁荣':1}]],
+['你对"爱情"的看法？',
+ ['忠贞不渝，一生一人',{'秩序':2}],
+ ['游戏人间，及时行乐',{'污堕':2}],
+ ['爱情是荷尔蒙的骗局',{'真理':2}],
+ ['可遇不可求，随缘',{'命运':2}]],
+['你更想成为什么样的人？',
+ ['被人敬仰的英雄',{'战争':2}],
+ ['被人畏惧的强者',{'混乱':2}],
+ ['被人需要的智者',{'真理':2}],
+ ['没人注意的普通人',{'沉默':2}]],
+['发现宝藏地图，你会？',
+ ['召集可靠队友一起寻宝',{'秩序':2}],
+ ['谁也不告诉，独自前往',{'欺诈':2}],
+ ['卖掉地图，落袋为安',{'繁荣':2}],
+ ['研究地图的真伪，可能是陷阱',{'真理':2}]],
+['你对神明的态度是？',
+ ['敬畏并虔诚侍奉',{'秩序':2}],
+ ['利用神明，各取所需',{'欺诈':2}],
+ ['神明不过更强的存在',{'真理':2}],
+ ['恨祂们，世界因祂而疯',{'混乱':2}]],
+['哪种死亡最让你恐惧？',
+ ['被遗忘地死去',{'记忆':2}],
+ ['死得毫无价值',{'战争':2}],
+ ['在痛苦中慢慢死去',{'死亡':2}],
+ ['死前才知道一切都是谎言',{'欺诈':2}]],
+['你如何看待"弱者"？',
+ ['弱者需要保护',{'诞育':2}],
+ ['弱者拖累整体',{'文明':0,'秩序':2}],
+ ['弱者活该被淘汰',{'混乱':2}],
+ ['强弱只是暂时的',{'时间':2}]],
+['如果世界能改变一件事，你选？',
+ ['让谎言无所遁形',{'真理':2}],
+ ['让死亡不再可怕',{'死亡':2}],
+ ['让时间可以倒流',{'时间':2}],
+ ['让世界重新疯一次',{'混乱':2}]],
+['你怎样度过闲暇时光？',
+ ['读书或研究',{'真理':2}],
+ ['锻炼或战斗训练',{'战争':2}],
+ ['和朋友聚会玩乐',{'繁荣':2}],
+ ['发呆，什么都不做',{'沉默':2}]],
+['你愿意为了什么冒险？',
+ ['为了真理',{'真理':2}],
+ ['为了爱与家人',{'诞育':2}],
+ ['为了财富',{'繁荣':2}],
+ ['为了刺激',{'混乱':2}]],
+['面对误解，你通常？',
+ ['解释清楚，清者自清',{'秩序':2}],
+ ['懒得解释，懂我的人自然懂',{'沉默':2}],
+ ['将错就错，误导得更深',{'欺诈':2}],
+ ['用实力打脸，胜过千言',{'战争':2}]],
+['你更怕哪种声音？',
+ ['死一样的寂静',{'混乱':2}],
+ ['永不停歇的噪音',{'沉默':2}],
+ ['有人在背后低语我的名字',{'记忆':2}],
+ ['命运齿轮转动的声音',{'命运':2}]],
+['如果可以抹去一段记忆，你会？',
+ ['不抹，记忆塑造了现在的我',{'记忆':2}],
+ ['抹掉所有痛苦',{'时间':2}],
+ ['抹掉所有快乐，从此不再怀念',{'死亡':2}],
+ ['先记着，等值得换的时候再换',{'欺诈':2}]],
+['你认为文明的基石是？',
+ ['法律与秩序',{'秩序':2}],
+ ['力量与征服',{'战争':2}],
+ ['知识与传承',{'真理':2}],
+ ['繁衍与延续',{'诞育':2}]],
+['如果必须献祭一样东西给神明，你选？',
+ ['我的财富',{'繁荣':2}],
+ ['我的记忆',{'记忆':2}],
+ ['我的寿命',{'死亡':2}],
+ ['别人的东西',{'欺诈':2}]],
+['你如何看待"复仇"？',
+ ['以眼还眼，天经地义',{'战争':2}],
+ ['冤冤相报何时了',{'诞育':1}],
+ ['复仇要讲究方法，以智取胜',{'欺诈':2}],
+ ['时间会替我复仇',{'时间':2}]],
+['你觉得自己是个好人吗？',
+ ['是，我问心无愧',{'秩序':2}],
+ ['不是，但我不坏',{'欺诈':2}],
+ ['好坏是别人定义的',{'真理':2}],
+ ['我不在乎好坏',{'沉默':2}]],
+['被困孤城，粮食只够一人十天，你们有三人。你？',
+ ['平分粮食，一起想办法',{'诞育':1}],
+ ['按贡献分配，强者多吃',{'战争':2}],
+ ['我拿走全部，各凭本事',{'混乱':2}],
+ ['抽签，听天由命',{'命运':2}]],
+['你如何看待"承诺"？',
+ ['一诺千金，死也要做到',{'秩序':2}],
+ ['承诺看对象，对敌人不算数',{'欺诈':2}],
+ ['承诺是过去的合同，时过境迁',{'时间':2}],
+ ['随口一说，别当真',{'混乱':2}]],
+['哪种风景最吸引你？',
+ ['壮丽的战争遗迹',{'战争':2}],
+ ['幽静的星空与深渊',{'命运':2}],
+ ['繁华的市集与花园',{'繁荣':2}],
+ ['燃烧的废墟与火雨',{'混乱':2}]],
+['你最讨厌哪种人？',
+ ['满口谎言的骗子',{'秩序':2}],
+ ['循规蹈矩的呆子',{'混乱':2}],
+ ['自以为是的聪明人',{'痴愚':2}],
+ ['纠缠不休的可怜虫',{'沉默':2}]],
+['如果你能成为一位存在的从神，你选？',
+ ['秩序之神的执剑者',{'秩序':2}],
+ ['死亡之神的送葬人',{'死亡':2}],
+ ['欺诈之神的代行者',{'欺诈':2}],
+ ['时间之神的守钟人',{'时间':2}]],
+['面对一个无解的难题，你会？',
+ ['查遍所有资料找答案',{'真理':2}],
+ ['先放着，时间会解决',{'时间':2}],
+ ['制造一个假的答案',{'欺诈':2}],
+ ['烧掉题目，就没有难题了',{'混乱':2}]],
+['你怎样看待自己的身体？',
+ ['躯壳而已，灵魂才是我',{'真理':2}],
+ ['必须锻炼到极致',{'战争':2}],
+ ['会老会死，珍惜使用',{'繁荣':1}],
+ ['碍事的废物，迟早要烂',{'腐朽':2}]],
+['你觉得自己被世界温柔以待过吗？',
+ ['是的，所以我也想温柔待人',{'诞育':2}],
+ ['没有，所以我也不温柔',{'混乱':2}],
+ ['无所谓，我不需要',{'沉默':2}],
+ ['温柔？那只是偶然',{'命运':2}]],
+['如果生命可以重来，你愿意吗？',
+ ['愿意，这次我要做得更好',{'繁荣':2}],
+ ['不愿意，重来还是一样',{'沉默':2}],
+ ['愿意，但保留记忆',{'记忆':2}],
+ ['不愿意，一次就够疯了',{'混乱':2}]],
+['你如何看待"牺牲"？',
+ ['必要的牺牲是荣耀',{'战争':2}],
+ ['谁的命都是命，不该牺牲任何人',{'诞育':2}],
+ ['牺牲别人总比牺牲自己好',{'欺诈':2}],
+ ['万物皆可牺牲，包括我',{'死亡':2}]],
+['你对"文明"的信心？',
+ ['文明终将战胜野蛮',{'秩序':2}],
+ ['文明不过精致的野蛮',{'混乱':2}],
+ ['文明起起落落，顺其自然',{'时间':2}],
+ ['文明是什么？能吃吗',{'痴愚':2}]],
+['深夜有人敲门求救，你一个人在家。你？',
+ ['开门救人',{'诞育':2}],
+ ['隔着门问清情况再决定',{'秩序':2}],
+ ['不开，世道险恶',{'沉默':2}],
+ ['假装家里没人，偷偷观察',{'欺诈':2}]],
+['你如何看待"运气"？',
+ ['运气是实力的一部分',{'战争':2}],
+ ['运气是命运之神掷的骰子',{'命运':2}],
+ ['运气不存在，都是必然',{'真理':2}],
+ ['我运气一直很差，习惯了',{'沉默':2}]],
+['如果得到一次复活的机会，你给谁？',
+ ['给为人类牺牲的英雄',{'秩序':2}],
+ ['给我最爱的人',{'诞育':2}],
+ ['给我自己，我还要再活一次',{'繁荣':2}],
+ ['不卖，复活是禁忌',{'死亡':2}]],
+['你如何看待"他人即地狱"？',
+ ['不无道理，人心险恶',{'欺诈':2}],
+ ['荒谬，人需要彼此',{'诞育':2}],
+ ['我才是别人的地狱',{'混乱':2}],
+ ['没听过，不懂',{'沉默':2}]],
+['选择武器，你选？',
+ ['重剑，正面碾压',{'战争':2}],
+ ['匕首，背后一击',{'沉默':2}],
+ ['法杖，远程轰炸',{'真理':2}],
+ ['不用武器，三寸不烂之舌',{'欺诈':2}]],
+['你最怕失去什么？',
+ ['记忆',{'记忆':2}],
+ ['力量',{'战争':2}],
+ ['自由',{'混乱':2}],
+ ['所爱之人',{'诞育':2}]],
+['如果写一本书，你写？',
+ ['一部严密的法典',{'秩序':2}],
+ ['一本精彩的谎言大全',{'欺诈':2}],
+ ['一部翔实的史书',{'记忆':2}],
+ ['一本教人发疯的怪书',{'混乱':2}]],
+['你如何看待"永生者"的孤独？',
+ ['永生是馈赠，孤独是代价',{'时间':2}],
+ ['永生是酷刑，不如速死',{'死亡':2}],
+ ['永生者活该孤独',{'秩序':2}],
+ ['永生？先让我试试',{'繁荣':2}]],
+['面对历史的错误，你？',
+ ['引以为戒，绝不重蹈',{'记忆':2}],
+ ['过去的就让它过去',{'时间':2}],
+ ['错误都是活人定义的',{'真理':2}],
+ ['历史是胜利者的谎言',{'欺诈':2}]],
+['你更想掌控哪种"规则"？',
+ ['让人说真话的规则',{'真理':2}],
+ ['让万物终结的规则',{'死亡':2}],
+ ['让欲望释放的规则',{'污堕':2}],
+ ['让秩序永恒的铁律',{'秩序':2}]],
+['在信仰游戏里，你最想要什么？',
+ ['变强，活到游戏结束',{'战争':2}],
+ ['成神，取代那些高高在上的',{'混乱':2}],
+ ['找到真相，知道这一切为何',{'真理':2}],
+ ['保护想保护的人',{'诞育':2}]],
+['你如何看待"赎罪"？',
+ ['罪孽只能用行动偿还',{'秩序':2}],
+ ['忏悔无用，遗忘最好',{'时间':2}],
+ ['罪是规则定的，规则是赢家定的',{'欺诈':2}],
+ ['我无罪可赎',{'混乱':2}]],
+['如果可以和过去的自己说一句话，你说？',
+ ['"别相信任何人"',{'欺诈':2}],
+ ['"趁年轻多努力"',{'真理':2}],
+ ['"对不起"',{'诞育':1}],
+ ['"闭嘴，我懂你"',{'混乱':2}]],
+['你如何看待"奇迹"？',
+ ['奇迹是神明的恩泽',{'秩序':1,'命运':1}],
+ ['奇迹是小概率事件',{'真理':2}],
+ ['奇迹是精心策划的骗局',{'欺诈':2}],
+ ['奇迹？我只信手里的刀',{'战争':2}]],
+['如果世界只剩一天，你最遗憾什么？',
+ ['没解开那个谜题',{'真理':2}],
+ ['没爱到那个人',{'诞育':2}],
+ ['没杀到想杀的人',{'战争':2}],
+ ['没什么遗憾的',{'沉默':2}]],
+['你对"孤独"的感受？',
+ ['享受孤独，独处最自在',{'沉默':2}],
+ ['害怕孤独，想要陪伴',{'诞育':2}],
+ ['孤独时才能看清自己',{'真理':2}],
+ ['孤独？我疯起来自己都怕',{'混乱':2}]],
+['最让你愤怒的事情是？',
+ ['被欺骗背叛',{'秩序':2}],
+ ['被愚弄嘲笑',{'混乱':2}],
+ ['规则对某些人无效',{'秩序':1,'真理':1}],
+ ['说不上来，我很少愤怒',{'沉默':2}]],
+['如果可以拥有一种"不死"方式，你选？',
+ ['肉体不灭',{'繁荣':2}],
+ ['精神永存于记忆',{'记忆':2}],
+ ['名字刻进历史',{'真理':1,'秩序':1}],
+ ['不死？我选体面地死',{'死亡':2}]],
+['你如何看待"命运之骰"？',
+ ['命运可以被预见，但不可依赖',{'命运':2}],
+ ['骰子是概率，不是命运',{'真理':2}],
+ ['掷出几点都是赢',{'欺诈':2}],
+ ['骰子是神明的玩具',{'混乱':2}]],
+['对于"背叛"，你的底线是？',
+ ['绝不背叛朋友',{'秩序':2}],
+ ['不背叛出价比我高的人',{'欺诈':2}],
+ ['背叛前先想清楚后果',{'真理':1,'战争':1}],
+ ['背叛也是交流的一种',{'混乱':2}]],
+['你理想中的世界？',
+ ['秩序井然，人人守规',{'秩序':2}],
+ ['自由狂野，强者为王',{'混乱':2}],
+ ['知识共享，人人明理',{'真理':2}],
+ ['万物静寂，归于虚无',{'死亡':1,'湮灭':1}]],
+['面对比你聪明的人，你？',
+ ['虚心学习',{'真理':2}],
+ ['利用他的聪明',{'欺诈':2}],
+ ['比他更聪明，或让他变蠢',{'痴愚':2}],
+ ['远离他，聪明人多作怪',{'沉默':2}]],
+['你对"自由"的定义？',
+ ['在规则之内的自由',{'秩序':2}],
+ ['打破一切规则的自由',{'混乱':2}],
+ ['不被任何神明注视的自由',{'死亡':1,'沉默':1}],
+ ['想做什么做什么',{'污堕':2}]],
+['最后：你为什么想活下去？',
+ ['为了见证更多故事',{'记忆':2}],
+ ['为了变得更强',{'战争':2}],
+ ['为了找到存在的意义',{'真理':2}],
+ ['不知道，但我不想死',{'繁荣':2}]],
+);
+</script>
+
+<script>
+/* ================= 配置（填自己的） ================= */
+const SUPABASE_URL = 'https://PASTE_YOUR_PROJECT_URL.supabase.co';
+const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.addEventListener('error',e=>{try{toast('错误：'+(e.message||'未知错误'))}catch(_){}});
+
+/* ================= 神明数据 ================= */
+const GOD_INFO = {
+  '秩序':{path:'文明', desc:'文明的序幕。遵行规则，约束自我。祂的信徒是整个游戏中最值得信赖的战友，几乎没有之一。', quote:'秩序长存。'},
+  '战争':{path:'文明', desc:'血与火的主宰。祂的试炼真刀真枪，不需要线索，干掉周围存在的一切敌人即可通关。', quote:'血与火，即为荣耀。'},
+  '真理':{path:'文明', desc:'洞窥本质，行见真理。博闻诗人将技能书写成册页，随时取用。', quote:'吾之所言，皆是真理。'},
+  '诞育':{path:'生命', desc:'生命的前奏，万物的起源，交合阴阳，崇尚繁衍。治疗时有概率使同伴"受孕"——别小看这副作用，每孕育一个新生命，治疗效果便增加三分。', quote:'拥抱繁衍，创造新生。'},
+  '繁荣':{path:'生命', desc:'生命的高潮，心神的丰茂，肆意生长。祂注视之地将一直繁荣，直到寿命的尽头。', quote:'万物滋生，亦繁亦荣。'},
+  '死亡':{path:'生命', desc:'生命的尾声。灵魂安眠，生命终焉，送葬与收割是祂赐予代行者的恩泽。祂从不是惊天动地的事件，只是生命之火安静地熄灭。', quote:'灵魂安眠，生命终焉。'},
+  '污堕':{path:'沉沦', desc:'沉沦于欲望。释放目标内心深处最原始的欲念，让其在放纵中迷失，在沉沦中丧失一切。', quote:'欢愉，是一切欲望的归途。'},
+  '腐朽':{path:'沉沦', desc:'沉沦的高潮，宇宙的终墓。自身腐朽越快，获得的神力反馈越多——以生命换取力量，是他们的敬献。', quote:'众生应腐，万物将朽。'},
+  '湮灭':{path:'沉沦', desc:'沉沦的尾声，生灵的崩毁。在祂眼中，存活不过是通向消失的过程，世界运转只为等待最后的审判。', quote:'万物终将崩毁，归于寂灭。'},
+  '混乱':{path:'混沌', desc:'混沌的序幕，无序的癫狂，秩序的死敌。他们的"恶意捣乱"在他们看来是引导宇宙走向终极的"善意"。', quote:'宇宙的本质，是无序。'},
+  '痴愚':{path:'混沌', desc:'生命皆痴，文明皆愚。祂自认比【真理】更接近真理，因此平等地鄙视世间一切存在。', quote:'凡人皆愚，唯我近神。'},
+  '沉默':{path:'混沌', desc:'跟随、观察、聆听、思考，唯独不与人交流。活的像一个独行的僧人，言语是多余的东西。', quote:'……'},
+  '欺诈':{path:'虚无', desc:'谎如昨日，嗤笑今朝。你的谎言更容易被他人相信，除非你主动暴露，否则无人可以看破。你还可以察觉除你之外的所有欺骗。', quote:'我从不骗人。'},
+  '命运':{path:'虚无', desc:'命运如骰。预见不久后的未来——但命运永远在变化，谁都不能确定所见的那一条线是否会到来。', quote:'命运，是个……骰子。'},
+  '记忆':{path:'存在', desc:'忠实记录发生的一切，是【欺诈】的死敌。回忆旅者翻阅彼时的书页，在交错的记忆中旅行。', quote:'忘记，是第二次死亡。'},
+  '时间':{path:'存在', desc:'时光如隙，我亦如风。布下时间战场，将战局开始与结束于整点。回溯昨日，或加速明天，只在弹指之间。', quote:'时间会治愈一切——只要你付得起代价。'},
+};
+const GOD_KEYS = Object.keys(GOD_INFO);
+/* 信仰对立（原著明确：秩序↔混乱 真理↔痴愚 诞育↔污堕 欺诈↔记忆；其余为命途配对） */
+const ENEMY = {'秩序':'混乱','混乱':'秩序','战争':'沉默','沉默':'战争','真理':'痴愚','痴愚':'真理','诞育':'污堕','污堕':'诞育','繁荣':'腐朽','腐朽':'繁荣','死亡':'湮灭','湮灭':'死亡','欺诈':'记忆','记忆':'欺诈','命运':'时间','时间':'命运'};
+
+const JOBS = {
+  '战士':{desc:'前排的壁垒。巨盾与大剑，守护身后的一切。', talent:['秩序长存','A','使用护盾类技能时，所有防御类效果提高25%。']},
+  '法师':{desc:'元素的掌控者。过载施法透支潜能，威力无穷。', talent:['过载施法','A','透支未来一段时间的所有潜能，为当前法术提级，大幅增强效果。']},
+  '牧师':{desc:'治疗与祝福。奶量，才是牧师的尊严。', talent:['共沐神恩','S','治疗同属物种时产生治疗传递效果，每多一个目标，治疗效果和治疗范围扩大一分。']},
+  '刺客':{desc:'游走于阴影之下。一击必杀，远遁千里。', talent:['阴影穿梭','A','短距离内凭阴影改变位置，并借阴影隐蔽自身，遁入阴影位面。']},
+  '猎人':{desc:'敏捷的追猎者。陷阱与弓箭，感官追猎。', talent:['感官追猎','A','放大猎物内心的欲望与恐惧，配合创生陷阱，追猎于无形。']},
+  '歌者':{desc:'以歌声改写战局。律令传唱，乐章即法则。', talent:['律令传唱','S','唱诵审判歌谣，使临时颁布的"法律"在一定区域内生效。']},
+};
+const SKILLS_BY_JOB = {
+  '战士':['冲锋','盾墙','裂地斩','战吼'],
+  '法师':['火球术','寒冰箭','奥术洪流','禁术·陨石火雨'],
+  '牧师':['基础治疗术','治疗链','治愈之光','镇定术','催眠术','抗性护盾'],
+  '刺客':['背刺','割喉','烟雾弹','死亡送葬'],
+  '猎人':['多重射击','创生草籽','陷阱布置','野兽之灵'],
+  '歌者':['激励乐章','安魂曲','战争迷雾','迷魂之音'],
+};
+const ITEMS = {
+ bread:['手指面包','C','形状与触感都和手指一模一样，咬开是爆浆的蔓越莓果酱。',[3,5]],
+ drink:['罐装粘液饮料','C','俗称"鼻涕水"，粘稠至极。但解渴，甚至有点果腹效果。',[3,5]],
+ egg:['仿眼球蛋糕','B','外表是逼真的眼球，其实是蛋糕。吃了不会怀孕，大概。',[6,9]],
+ berry:['干瘪的浆果','D','皱巴巴的浆果，聊胜于无。',[1,2]],
+ jerky:['可疑的肉干','D','看不出是什么肉，但蛋白质是牛肉的三倍。',[1,3]],
+ can:['过期罐头','D','保质期？末世里没有这个词。',[1,2]],
+ candy:['能量糖','C','短暂的快乐与热量。',[4,6]],
+ bandage:['旧绷带','C','洗过很多次，但还能用。',[4,6]],
+ flint:['打火石','C','火是人类文明的序幕。',[4,6]],
+ rope:['麻绳','C','十米长，用途自行想象。',[3,5]],
+ badge:['审判庭徽章','B','大审判庭的徽章，握着它的人会下意识挺直腰板。',[10,14]],
+ smilemask:['假笑面具','B','一张永远微笑的面具，看不出真假。',[10,14]],
+ photo:['泛黄的照片','B','照片里的人都不认识，但你觉得他们很幸福。',[10,14]],
+ watch:['停走的怀表','B','停在两点整。时间不愿再为任何人流动。',[10,14]],
+ seedbag:['创生草籽袋','B','握在手里能听到细微的生长声。',[10,14]],
+ candle:['安魂蜡烛','B','点燃后，周围的哭声会小一些。',[10,14]],
+ witherrose:['不凋之花','A','摘下它的人，永远不会看到它枯萎。',[18,25]],
+ mirror:['碎裂的镜片','B','每一片都照出不同的你。',[10,14]],
+ score:['失律的乐谱','B','读不懂的音符，看久了会头晕。',[10,14]],
+ bell:['无音铃','B','怎么摇都没有声音，但狗会叫。',[10,14]],
+ dicecharm:['骰子挂件','C','骰子永远在转，只是你看不见。',[4,7]],
+ blankbook:['无字之书','B','据说只有足够聪明的人才能看到字。',[10,14]],
+ sachet:['迷情香囊','C','闻起来让人想起不愿想起的人。',[4,7]],
+ rustkey:['锈蚀的钥匙','C','它开过某扇不该打开的门。',[4,7]],
+ monocle:['单片眼镜','C','戴上它，你会觉得自己聪明了一点。',[4,7]],
+ sword:['断裂的骑士剑','B','断口很新，主人应该刚离开不久。',[10,14]],
+ glory:['往日的繁荣','A','治愈药剂。于记忆中遍寻，追溯并恢复到过往最鼎盛的状态。',[15,20]],
+ dead:['亡者的鄙夷','A','产自虔诚的【死亡】信徒。饮下后药效时间内不会真正死亡。',[15,20]],
+ diceS:['命运之骰·既定','S','你永远无法改变这颗骰子的命运——但你可以借用它。',[40,60]],
+ maskSS:['众生假面','SS','千人一面，千面一人。数量：47。',[80,120]],
+};
+const BLESS_ITEMS = ['dice','mask','glory','dead','egg'];
+
+/* ================= 状态与工具 ================= */
+let profile=null, quizQs=[], quizIdx=0, quizScores={};
+let deck=[], deckIdx=0, pickedGod=null;
+function $(id){return document.getElementById(id)}
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(id).classList.add('active')}
+function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',1800)}
+function fmtTime(s){const d=new Date(s);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+/* ================= 登录（代号+密码，无需邮箱） ================= */
+const FAKE_DOMAIN='@dengshen.game';
+function validId(s){return /^[a-zA-Z0-9_]{3,16}$/.test(s)}
+async function doRegister(){
+  $('authErr').textContent='';
+  const id=$('uid').value.trim(), pwd=$('pass').value;
+  if(!validId(id)){$('authErr').textContent='代号只能用字母、数字、下划线，3~16位';return}
+  if(pwd.length<6){$('authErr').textContent='密码至少6位';return}
+  const {error}=await sb.auth.signUp({email:id+FAKE_DOMAIN,password:pwd});
+  if(error){$('authErr').textContent=(error.message.includes('already')||error.message.includes('registered'))?'这个代号已经被用了，换一个':error.message;return}
+  toast('注册成功，欢迎踏入命途');
+  await boot();
+}
+/* ===== 特殊号码：在登录框输入此代号+密码，点"登录"免注册直通 ===== */
+const VISITOR_ID='shenguan_7841';        // 特殊代号（可改成你自己的复杂组合）
+const VISITOR_PWD='DengShen#2026Faith';  // 特殊密码（可改）
+async function visitorEnter(){
+  let {error}=await sb.auth.signInWithPassword({email:VISITOR_ID+FAKE_DOMAIN,password:VISITOR_PWD});
+  if(error){
+    const r=await sb.auth.signUp({email:VISITOR_ID+FAKE_DOMAIN,password:VISITOR_PWD});
+    if(r.error){toast('直通故障：'+r.error.message);return}
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user){toast('首次使用需先在Supabase关闭Confirm email');return}
+    const {data:pf}=await sb.from('profiles').select('id').eq('id',user.id).maybeSingle();
+    if(!pf){
+      await sb.from('profiles').insert({id:user.id,name:'灵丘访客',path:'虚无',god:'欺诈',job:'牧师',ladder:1000,divine_road:0,talents:[],skills:[]});
+    }
+  }
+  await boot();
+}
+
+async function doLogin(){
+  $('authErr').textContent='';
+  if(SUPABASE_URL.includes('PASTE_')||SUPABASE_KEY.includes('PASTE_')){toast('网站还没配置密钥：请先填写 SUPABASE_URL 和 SUPABASE_KEY');return}
+  const id=$('uid').value.trim(), pwd=$('pass').value;
+  if(id===VISITOR_ID&&pwd===VISITOR_PWD){await visitorEnter();return}
+  const {error}=await sb.auth.signInWithPassword({email:id+FAKE_DOMAIN,password:pwd});
+  if(error){$('authErr').textContent='代号或密码错误';return}
+  await boot();
+}
+
+/* ================= 启动 ================= */
+async function boot(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){show('view-auth');return}
+  const {data}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+  if(data){profile=data;enterApp()}
+  else startQuiz();
+}
+
+/* ================= 命途叩问（答题） ================= */
+function startQuiz(){
+  quizQs=shuffle([...QUIZ_BANK]).slice(0,30);
+  quizIdx=0; quizScores={};
+  show('view-quiz'); renderQuiz();
+}
+function renderQuiz(){
+  const q=quizQs[quizIdx];
+  $('quiz-num').textContent=`第 ${quizIdx+1} / 30 问`;
+  $('quiz-progress').firstElementChild.style.width=((quizIdx+1)/30*100)+'%';
+  $('quiz-q').textContent=q[0];
+  $('quiz-opts').innerHTML='';
+  q.slice(1).forEach(opt=>{
+    const b=document.createElement('button');
+    b.className='quiz-opt'; b.textContent=opt[0];
+    b.onclick=()=>{
+      $('quiz-opts').querySelectorAll('.quiz-opt').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel');
+      for(const g in opt[1]) quizScores[g]=(quizScores[g]||0)+opt[1][g];
+      setTimeout(()=>{ quizIdx++; quizIdx<30 ? renderQuiz() : calcGods(); }, 260);
+    };
+    $('quiz-opts').appendChild(b);
+  });
+}
+function calcGods(){
+  const sorted=Object.entries(quizScores).sort((a,b)=>b[1]-a[1]);
+  let picked=sorted.slice(0,5).map(s=>s[0]).filter(g=>GOD_INFO[g]);
+  while(picked.length<4){const g=GOD_KEYS[Math.floor(Math.random()*GOD_KEYS.length)];if(!picked.includes(g))picked.push(g)}
+  deck=picked; deckIdx=0;
+  show('view-cards'); renderDeck();
+}
+
+/* ================= 浮空卡牌 ================= */
+function renderDeck(){
+  const box=$('deck-box'); box.innerHTML='';
+  for(let i=0;i<Math.min(3,deck.length);i++){
+    const g=deck[(deckIdx+i)%deck.length];
+    const info=GOD_INFO[g];
+    const c=document.createElement('div');
+    c.className='gcard'+(i===0?' top':'');
+    c.style.zIndex=50-i;
+    c.style.transform=`translateY(${i*13}px) scale(${1-i*0.05}) rotate(${i%2?1.5:-1.5}deg)`;
+    c.style.borderColor={文明:'var(--civil)',生命:'var(--life)',沉沦:'var(--sink)',混沌:'var(--chaos)',虚无:'var(--void)',存在:'var(--exist)'}[info.path];
+    c.innerHTML=`
+      <div class="gc-path">【${info.path}】命途</div>
+      <div class="gc-name">${g}</div>
+      <div class="gc-desc">${info.desc}</div>
+      <div class="gc-quote">"${info.quote}"</div>`;
+    if(i===0) attachSwipe(c);
+    box.appendChild(c);
+  }
+}
+function deckNav(d){
+  deckIdx=(deckIdx+d+deck.length)%deck.length;
+  renderDeck();
+}
+function attachSwipe(card){
+  let sx=0,dx=0,drag=false;
+  const start=x=>{sx=x;drag=true;card.style.animation='none';card.style.transition='none'};
+  const move=x=>{if(!drag)return;dx=x-sx;card.style.transform=`translateX(${dx}px) rotate(${dx/16}deg)`};
+  const end=()=>{
+    if(!drag)return; drag=false; card.style.transition='transform .25s,opacity .25s';
+    if(Math.abs(dx)>70){
+      const dir=dx>0?1:-1;
+      card.style.transform=`translateX(${dir*480}px) rotate(${dir*28}deg)`;
+      card.style.opacity=0;
+      setTimeout(()=>{deckIdx=(deckIdx+1)%deck.length;renderDeck()},230);
+    }else{
+      card.style.transform=''; card.style.animation='';
+      renderDeck();
+    }
+    dx=0;
+  };
+  card.addEventListener('touchstart',e=>start(e.touches[0].clientX));
+  card.addEventListener('touchmove',e=>move(e.touches[0].clientX));
+  card.addEventListener('touchend',end);
+  card.addEventListener('mousedown',e=>{start(e.clientX);const mv=e2=>move(e2.clientX),up=()=>{end();document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)});
+}
+function confirmGod(){
+  pickedGod=deck[deckIdx];
+  $('name-sub').textContent=`${GOD_INFO[pickedGod].quote} ——【${GOD_INFO[pickedGod].path}·${pickedGod}】已注视着你。`;
+  show('view-name');
+  $('pname').value='';
+}
+
+/* ================= 命名 → 选职业 → 建档 ================= */
+function goJob(){
+  const n=$('pname').value.trim();
+  if(!n){toast('先给自己起个名字');return}
+  $('pname')._v=n.slice(0,12);
+  let html='';
+  for(const j in JOBS){
+    html+=`<button class="opt" onclick="finishCreate('${j}')"><span class="t">${j}</span><div class="d">${JOBS[j].desc}</div></button>`;
+  }
+  $('job-opts').innerHTML=html;
+  show('view-job');
+}
+async function finishCreate(job){
+  const {data:{user}}=await sb.auth.getUser();
+  const info=GOD_INFO[pickedGod];
+  const payload={id:user.id, name:$('pname')._v||'无名信徒', path:info.path, god:pickedGod, job, ladder:1000, divine_road:0, talents:[], skills:[]};
+  const {error}=await sb.from('profiles').insert(payload);
+  if(error){toast(error.message);return}
+  const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  profile=data;
+  enterApp();
+  toast(`【${info.path}·${pickedGod}】的${job}，欢迎踏入命途`);
+}
+</script>
+
+<script>
+/* ================= 主应用 ================= */
+const CHANS=[{k:'world',n:'世界'},{k:'regional',n:'区域'},{k:'faith',n:'信仰'},{k:'job',n:'职业'},{k:'forum',n:'论坛'}];
+let currentChan='world', curPostId=null;
+
+async function markVisitor(){const {data:{user}}=await sb.auth.getUser();isVisitor=!!(user&&user.email===VISITOR_ID+FAKE_DOMAIN);}
+function enterApp(){
+  show('view-app');
+  $('h-name').textContent=profile.name;
+  $('h-faith').textContent=`【${profile.path}·${profile.god}】 ${profile.job} ｜ 天梯 ${profile.ladder}`;
+  // 频道按钮
+  $('chan-btns').innerHTML=CHANS.map(c=>`<button class="chan-btn ${c.k===currentChan?'on':''}" onclick="switchChan('${c.k}',this)">${c.n}</button>`).join('');
+  switchChan('world');
+  loadPosts();
+  sb.channel('live-v3')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},async p=>{
+      if(p.new.channel===currentChan && currentChan!=='forum'){const {data:u}=await sb.from('profiles').select('name,god').eq('id',p.new.user_id).maybeSingle();appendMsg({...p.new,profiles:u});}
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'comments'},p=>{if(curPostId&&Number(p.new.post_id)===Number(curPostId))renderComments(curPostId)})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles'},()=>onProfilesChanged())
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'profiles'},()=>onProfilesChanged())
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'dms'},async p=>{
+      if(dmFriend&&p.new.from_id===dmFriend.id)appendDM(p.new);
+      else if(p.new.to_id===profile.id){const {data:u}=await sb.from('profiles').select('name').eq('id',p.new.from_id).maybeSingle();toast('收到 '+((u&&u.name)||'好友')+' 的私语');}
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'friend_requests'},p=>{if(p.new.to_id===profile.id&&$('tab-friends').classList.contains('active'))renderFriends()})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'friend_requests'},()=>{if($('tab-friends').classList.contains('active'))renderFriends()})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'trials_lib'},()=>{if($('tab-trials').classList.contains('active'))renderTrials()})
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'rooms'},()=>loadHall())
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'rooms'},()=>loadHall())
+    .subscribe();
+  markVisitor();
+}
+function showTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $(id).classList.add('active');
+  document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  if(id==='tab-panel')renderPanel();
+  if(id==='tab-bag')renderBag();
+  if(id==='tab-trials')renderTrials();
+  if(id==='tab-me')renderMe();
+  if(id==='tab-friends')renderFriends();
+}
+let _rt=null;
+function onProfilesChanged(){
+  clearTimeout(_rt);
+  _rt=setTimeout(async()=>{
+    const {data}=await sb.from('profiles').select('*').eq('id',profile.id).maybeSingle();
+    if(data){profile=data;$('h-name').textContent=profile.name;$('h-faith').textContent=`【${profile.path}·${profile.god}】 ${profile.job} ｜ 天梯 ${profile.ladder}`;}
+    if($('tab-chat').classList.contains('active')&&currentChan!=='forum')loadMsgs();
+    if($('forum-pane').style.display!=='none'){curPostId?refreshPostDetail():loadPosts();}
+    if($('tab-panel').classList.contains('active'))renderPanel();
+    if($('tab-bag').classList.contains('active'))renderBag();
+    if($('tab-me').classList.contains('active'))renderMe();
+  },600);
+}
+
+/* ---------- 频道 ---------- */
+function switchChan(k,btn){
+  currentChan=k;
+  document.querySelectorAll('.chan-btn').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  const isForum=k==='forum';
+  $('chat-pane').style.display=isForum?'none':'flex';
+  $('forum-pane').style.display=isForum?'flex':'none';
+  if(isForum)loadPosts(); else loadMsgs();
+}
+async function loadMsgs(){
+  let q=sb.from('messages').select('id,content,channel,path,job,created_at,user_id,profiles(name,god)').order('created_at',{ascending:false}).limit(60);
+  if(currentChan==='world')q=q.eq('channel','world');
+  else if(currentChan==='regional')q=q.eq('channel','regional');
+  else if(currentChan==='faith')q=q.eq('channel','faith').eq('path',profile.path);
+  else if(currentChan==='job')q=q.eq('channel','job').eq('job',profile.job);
+  const {data}=await q;
+  $('msg-list').innerHTML='';
+  (data||[]).reverse().forEach(m=>appendMsg(m));
+}
+function appendMsg(m){
+  const anon=m.channel==='regional';
+  const name=anon?'附近的信徒':(m.profiles?.name||'无名信徒');
+  const god=(!anon&&m.profiles?.god)?`<span class="god">【${esc(m.profiles.god)}】</span>`:'';
+  const mine=profile&&m.user_id===profile.id;
+  const div=document.createElement('div');
+  div.className='msg'+(mine?' me':'');
+  div.innerHTML=`<div class="who">${mine?'我：':''}${god}${esc(name)}</div>
+    <div class="bub">${esc(m.content)}</div>
+    <div class="time">${fmtTime(m.created_at)}</div>`;
+  const list=$('msg-list');
+  list.appendChild(div);
+  list.scrollTop=list.scrollHeight;
+}
+async function sendMsg(){
+  const c=$('msg-input').value.trim();
+  if(!c)return;
+  $('msg-input').value='';
+  const {error}=await sb.from('messages').insert({user_id:profile.id,channel:currentChan,path:profile.path,job:profile.job,content:c});
+  if(error){toast(error.message);return}
+  addScore(1,0);
+}
+
+/* ---------- 论坛 ---------- */
+function forumShow(id){
+  document.querySelectorAll('#forum-pane .f-sub').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+async function loadPosts(){
+  const {data}=await sb.from('posts').select('id,title,content,created_at,profiles(name)').order('created_at',{ascending:false}).limit(50);
+  $('post-list').innerHTML=(data&&data.length)?'':'<div class="dim" style="text-align:center;padding:40px 0">还没有帖子，写下第一篇吧</div>';
+  (data||[]).forEach(p=>{
+    const div=document.createElement('div');
+    div.className='post-card'; div.onclick=()=>openPost(p.id);
+    div.innerHTML=`<div class="pt">${esc(p.title)}</div><div class="pp">${esc(p.content)}</div>
+      <div class="pm">${esc(p.profiles?.name||'无名信徒')} · ${fmtTime(p.created_at)}</div>`;
+    $('post-list').appendChild(div);
+  });
+}
+async function sendPost(){
+  const t=$('post-title').value.trim(),c=$('post-content').value.trim();
+  if(!t||!c){toast('标题和内容都要填');return}
+  const {error}=await sb.from('posts').insert({user_id:profile.id,title:t,content:c});
+  if(error){toast(error.message);return}
+  $('post-title').value='';$('post-content').value='';
+  addScore(5,2);
+  forumShow('forum-list-wrap'); loadPosts();
+  toast('发布成功，登神之路+5');
+}
+async function openPost(id){
+  curPostId=id;
+  const {data:p}=await sb.from('posts').select('id,title,content,created_at,profiles(name,god)').eq('id',id).single();
+  if(!p)return;
+  $('detail-body').innerHTML=`
+    <button class="back" style="background:none;border:none;color:var(--dim);font-family:inherit;font-size:14px" onclick="forumShow('forum-list-wrap');curPostId=null">← 返回列表</button>
+    <div class="card" style="margin-top:8px">
+      <div style="font-size:19px;color:var(--gold2);letter-spacing:1px">${esc(p.title)}</div>
+      <div class="dim" style="margin:8px 0 12px">${esc(p.profiles?.name||'无名信徒')} ${p.profiles?.god?('·【'+esc(p.profiles.god)+'】'):''} · ${fmtTime(p.created_at)}</div>
+      <div style="line-height:1.8;white-space:pre-wrap">${esc(p.content)}</div>
+    </div>
+    <div class="sec-t">回 复</div>
+    <div id="cmt-list"></div>`;
+  renderComments(id);
+  forumShow('forum-detail');
+}
+async function refreshPostDetail(){if(curPostId)openPost(curPostId)}
+async function renderComments(postId){
+  const {data}=await sb.from('comments').select('id,content,created_at,profiles(name)').eq('post_id',postId).order('created_at',{ascending:true}).limit(100);
+  const box=$('cmt-list');if(!box)return;
+  box.innerHTML=(data&&data.length)?'':'<div class="dim">暂无回复</div>';
+  (data||[]).forEach(c=>{
+    const div=document.createElement('div');
+    div.className='cmt';
+    div.innerHTML=`${esc(c.content)}<div class="cm">${esc(c.profiles?.name||'无名信徒')} · ${fmtTime(c.created_at)}</div>`;
+    box.appendChild(div);
+  });
+}
+async function sendCmt(){
+  const c=$('cmt-input').value.trim();
+  if(!c||!curPostId)return;
+  $('cmt-input').value='';
+  const {error}=await sb.from('comments').insert({post_id:curPostId,user_id:profile.id,content:c});
+  if(!error)addScore(0,1);
+}
+</script>
+
+<script>
+/* ================= 多人联机试炼剧本 =================
+   每题: q问题 opts四选项 ans正确 risky冒险项(答对20分/答错-5) */
+const MULTI_TRIALS=[
+ {key:'mt_moon',title:'血月旅馆',desc:'暴雨夜，一家没有影子的旅馆',reward:'bread',questions:[
+  {q:'老板娘递来热茶，茶香甜腻。你瞥见她的影子有九条尾巴。你会？',opts:['一口喝干，先暖身子','假装喝，趁她转身倒掉','当场质问她的影子','直接转身离开'],ans:1,risky:0},
+  {q:'半夜走廊传来拖行声。你透过猫眼看到：隔壁房客对你眨眼——但他的头正被老板娘提在手里。你？',opts:['冲出去救人','用椅子抵住门，装睡','翻窗逃走','大声敲墙惊醒所有人'],ans:1,risky:0},
+  {q:'天亮前你必须遵守规则：绝不能让她知道"你看见了"。早餐时她笑着问"睡得好吗"，嘴角沾着一颗纽扣。你回答？',opts:['"很好，茶不错。"','"隔壁半夜好吵。"','"你嘴边的是什么？"','沉默地盯着她'],ans:0,risky:3},
+  {q:'退房时她站在门口数人数："一、二、三……"眼神在你身上停得格外久。你？',opts:['趁她数错，立刻冲出门','耐心等她数完','顺手带走一件"纪念品"','提出再住一晚'],ans:0,risky:2},
+  {q:'逃出来后回望，旅馆只剩一块写着"拆"字的木牌。你摸出手机，相册里你们的合影上——多了一张不属于任何人的笑脸。这意味着？',opts:['你们之中，多了一个','你们被记住了，这不是好事','这只是光线造成的错觉','老板娘在给你们送行'],ans:0,risky:1}]},
+ {key:'mt_ship',title:'深渊号',desc:'一艘不该存在的沉船，在雾中发来求救信号',reward:'drink',questions:[
+  {q:'雾中浮现一艘锈船，船名"深渊号"——档案里它二十年前就沉了。船上有人挥手求救。你？',opts:['靠近救援','保持距离，先观察','绕行离开','向它开炮'],ans:1,risky:0},
+  {q:'救生绳抛来，你抓住的瞬间，发现绳子是从水下递上来的。你？',opts:['立刻松手','顺着绳子看看水下','把绳子绑在桅杆上','喊队友一起拉'],ans:0,risky:3},
+  {q:'登船后，大副递来航海日志，最后一页写着："别相信时钟，我们已经多活了一天。"你抬头看钟——它倒着走。你？',opts:['砸碎时钟','假装没看见','按倒走的钟对表','记录时间差'],ans:3,risky:0},
+  {q:'船长请你共进晚餐，菜单是：前菜遗忘汤，主菜昨日牛排，甜点明天的自己。你？',opts:['全吃，给船长面子','只吃甜点','借口晕船离席','把食物藏起来'],ans:2,risky:0},
+  {q:'离开时船长送你一枚徽章："下次雾起时，你就是深渊号的人了。"徽章背面刻着你的名字——笔迹是你的。你？',opts:['收下，这是纪念品','当场扔回海里','收下沉入海底','把徽章送给队友'],ans:2,risky:0}]},
+ {key:'mt_market',title:'无影集市',desc:'只在午夜开市，摊位上贩卖"昨天"',reward:'egg',questions:[
+  {q:'午夜集市入口的老妇人收"门票"——一个你最不想记起的记忆。你？',opts:['给她一个无关紧要的','给她最珍贵的换好货','转身离开，不进了','试图讨价还价'],ans:0,risky:1},
+  {q:'摊位上在卖"昨天"：罐装的、风干的、还能听到笑声的。摊主说吃了能重来一天。你？',opts:['买一罐备着','问他能不能退货','买一瓶给队友','问他明天的价格'],ans:3,risky:0},
+  {q:'你发现集市的地面没有影子，包括你自己的。旁边小孩指着你笑："你也要被收走了！"你？',opts:['立刻跑向出口','抓住小孩问清楚','躲进阴影里','买一面镜子照自己'],ans:1,risky:0},
+  {q:'摊主们突然同时看向你，齐声说："收摊前，要留下一个没影子的人。"所有人开始围拢。你？',opts:['拼命冲向出口','推倒货架制造混乱','指着一个同伴说"他也没影子"','站在原地不动'],ans:1,risky:2},
+  {q:'逃出集市，晨光中你终于看到了自己的影子——它比你慢了半拍才动。你意识到？',opts:['影子没跟上，还没事','影子已经不属于集市了','你带回了"昨天"的一部分','晨光太刺眼产生的错觉'],ans:0,risky:1}]},
+ {key:'mt_pharmacy',title:'遗忘药房',desc:'存在命途的碎片在这里兜售遗忘',reward:'drink',questions:[
+  {q:'药房里卖"遗忘"：每瓶标注一个记忆的名字。店主说第一瓶免费。你？',opts:['拿走最贵的那瓶','问"喝完还记得怎么回家吗"','婉拒离开','买一瓶标注"痛苦"的'],ans:3,risky:0},
+  {q:'你喝下后忘记了自己的名字。店员递来名片：你的名字在上面，背面写着"这次别忘了付钱"。你？',opts:['付钱','撕掉名片','问他怎么知道你的名字','再要一瓶'],ans:2,risky:3},
+  {q:'药房深处有扇门，门上贴着"尚未发生"。你？',opts:['直接推门','从门缝看进去','问店主里面是什么','转身离开'],ans:2,risky:0},
+  {q:'店主说可以帮你忘掉"这场试炼本身"，代价是奖励减半。你？',opts:['同意','拒绝','讨价还价','假装同意'],ans:1,risky:2},
+  {q:'离开药房你想起了一切，唯独忘了店主的样貌——只记得他在笑。这意味着？',opts:['他也被所有人遗忘了','你成功摆脱了什么','他还活在某人的记忆里','你其实从没离开'],ans:2,risky:1}]},
+ {key:'mt_harvest',title:'丰收祭',desc:'生命命途的村庄，庆典之下暗流涌动',reward:'bread',questions:[
+  {q:'村庄邀请你参加丰收祭，祭品是"今年最后一个出生的孩子"。你？',opts:['极力劝阻','照常参加','告发村长','悄悄离开'],ans:0,risky:0},
+  {q:'祭典上村民分食一碗"新生汤"。你注意到汤里有东西在动。你？',opts:['照喝不误','悄悄倒掉','大声质问','假装过敏'],ans:1,risky:0},
+  {q:'村长说：只有参与者才能得到"大地的祝福"——一袋种子。你？',opts:['接受种子','拒绝','要求换成别的','偷走更多种子'],ans:1,risky:3},
+  {q:'夜里你听到田里传来窃窃私语，种子在商量"谁先发芽"。你意识到？',opts:['种子是活的','你只是幻听','它们在选举领袖','有人装神弄鬼'],ans:0,risky:1},
+  {q:'临别村长送你一株麦穗："种下它，你会得到你种下的。"麦穗在你掌心轻轻颤动。你？',opts:['种下它','吃掉它','做成标本','扔掉'],ans:0,risky:0}]},
+ {key:'mt_trial',title:'审判日',desc:'文明纪元的大审判庭，传召你的罪名是"即将犯罪"',reward:'egg',questions:[
+  {q:'你收到一张传票，罪名是"即将犯罪"。法官问你：你认罪吗？你？',opts:['认罪','不认罪','要求出示证据','反问这是哪条法律'],ans:2,risky:2},
+  {q:'证人席上坐着明天的你，他指认你有罪。你？',opts:['质疑证人的合法性','冲明天的你大喊','保持沉默','直接认罪'],ans:0,risky:0},
+  {q:'法官给你一次"修改过去"的机会，但只能改一个标点。你改？',opts:['罪名里的"即将"','自己的名字','判决书的句号','什么都不改'],ans:3,risky:3},
+  {q:'陪审团由12个"不同时刻的你"组成，他们意见不一。你？',opts:['说服最关键的那个','让他们投票','替他们做决定','宣布流审'],ans:0,risky:1},
+  {q:'最终判决：无罪释放，条件是"永远不得成为今天的你"。你？',opts:['接受','拒绝','上诉','遗忘'],ans:1,risky:1}]},
+ {key:'mt_chorus',title:'无声合唱团',desc:'没有嘴的歌者，唱的是整个小镇的安眠曲',reward:'drink',questions:[
+  {q:'教堂里的合唱团没有嘴，歌声却完美。指挥邀请你加入，条件是交出声音。你？',opts:['交出声音','拒绝','只交出歌单','躲在门口偷听'],ans:1,risky:0},
+  {q:'失去声音后，你发现自己能听见别人"没说出口的话"。第一个听到的是？',opts:['指挥的恐惧','队友的谎言','自己的心跳','神明的鼾声'],ans:2,risky:2},
+  {q:'你意识到合唱团唱的其实是"镇魂曲"——全镇人会在歌声中睡去。你？',opts:['继续唱完','捂住耳朵','叫醒其他人','默记乐谱'],ans:2,risky:1},
+  {q:'指挥递给你一本无字的乐谱："用沉默来唱。"你？',opts:['照做','摇头拒绝','用手势指挥','退场'],ans:2,risky:0},
+  {q:'曲终，你恢复了声音——但所有人都在用嘴型说同一句话。你看懂了，那是？',opts:['"谢谢你"','"轮到你了"','"快逃"','"欢迎回家"'],ans:1,risky:1}]},
+];
+
+/* ================= 天赋（原著：天赋位与等级由登神之路分段决定） ================= */
+const TALENT_POOL=[
+ ['lie','谎如昨日','SS','欺诈：宣告"我从不骗人"，本题直接判定正确；冒险题再+5（队中有记忆信徒则加成封存）。','欺诈','cheat'],
+ ['master','欺骗大师','S','欺诈：排除一个错误选项；答对再+5。','欺诈','peek5'],
+ ['bluff','虚张声势','B','欺诈：虚张声势唬住全场，答对+8。','欺诈','guard:8'],
+ ['sweet','甜言蜜语','D','欺诈：一句好听话，答对+3。','欺诈','guard:3'],
+ ['dice','命运之骰','S','命运：掷1d20换算-9~+10分；20点满分，1点-10。','命运','dice'],
+ ['omen','预兆','C','命运：冥冥中的预感，排除一个错误选项。','命运','peek'],
+ ['luckyd','随缘','D','命运：随机±5分，随缘。','命运','chaosS'],
+ ['timefield','时间战场','SS','时间：窥见本题真相；下一题-5分（时间偿还）。','时间','reveal'],
+ ['haste','争分夺秒','B','时间：抢在时间前面，答对+8。','时间','guard:8'],
+ ['delay','拖延','D','时间：拖一拖，免答+2。','时间','silence:2'],
+ ['memory','回忆流光','S','记忆：排除一个错误项；队中有欺诈信徒则翻两个。','记忆','peek'],
+ ['eidetic','过目不忘','B','记忆：所有见过的都不会忘，答对+8。','记忆','guard:8'],
+ ['memo','备忘录','D','记忆：记在小本本上，答对+3。','记忆','guard:3'],
+ ['anchor','秩序锚点','S','秩序：答对+10答错减半；战士共鸣再+5。','秩序','anchor'],
+ ['lawful','遵纪守法','B','秩序：规矩就是力量，答对+8。','秩序','guard:8'],
+ ['sentry','站岗','D','秩序：坚守岗位，答对+3。','秩序','guard:3'],
+ ['blood','血与火','S','战争：冒险选项答对+40、答错-10，正面碾压！','战争','bloody'],
+ ['militant','好战','B','战争：渴望战斗，答对+8。','战争','guard:8'],
+ ['roar','怒吼','D','战争：一声怒吼，答对+3。','战争','guard:3'],
+ ['truthsee','真理之视','S','痴愚：排除两个错误项；冒险奖励-5（太自信）。','痴愚','truthsee'],
+ ['arrogant','傲慢','B','痴愚：傲慢也是力量，答对+8。','痴愚','guard:8'],
+ ['sneer','撇嘴','D','痴愚：不屑地撇嘴，答对+3。','痴愚','guard:3'],
+ ['scholar','博闻强识','S','真理：排除两个错误项。','真理','truthsee2'],
+ ['study','好学','B','真理：勤能补拙，答对+8。','真理','guard:8'],
+ ['notes','笔记','D','真理：好记性不如烂笔头，答对+3。','真理','guard:3'],
+ ['birth','创生草籽','A','诞育：答对+8；每多一名生命命途队友再+3。','诞育','birth'],
+ ['midwife','助产士','B','诞育：迎接新生，答对+8。','诞育','guard:8'],
+ ['lullaby','童谣','D','诞育：哼一首童谣，答对+3。','诞育','guard:3'],
+ ['wither','只待枯萎','S','繁荣：连续答对逐题+2（封顶+10）；结算食物翻倍。','繁荣','wither'],
+ ['lush','枝繁叶茂','B','繁荣：长势喜人，答对+8。','繁荣','guard:8'],
+ ['sprout','发芽','D','繁荣：破土而出，答对+3。','繁荣','guard:3'],
+ ['requiem','送葬之歌','A','死亡：答错不扣分；失败转为下一题+8。','死亡','requiem'],
+ ['graved','入殓师','B','死亡：见惯生死，答对+8。','死亡','guard:8'],
+ ['whiteflower','白花','D','死亡：献上一朵白花，答对+3。','死亡','guard:3'],
+ ['lust','欲望傀儡','A','污堕：窥见3名队友实名选择；跟随多数且对+5。','污堕','lust'],
+ ['indulge','纵情','B','污堕：及时行乐，答对+8。','污堕','guard:8'],
+ ['tease','挑逗','D','污堕：抛个媚眼，答对+3。','污堕','guard:3'],
+ ['rot','万物将朽','A','腐朽：先-5；答对+15。队中有繁荣信徒对冲再-5。','腐朽','rot'],
+ ['rusty','锈迹','B','腐朽：锈蚀之力，答对+8。','腐朽','guard:8'],
+ ['mold','霉斑','D','腐朽：霉斑也是力量，答对+3。','腐朽','guard:3'],
+ ['ruin','崩毁之触','S','湮灭：答对+30 / 答错-10，没有中间地带。','湮灭','ruin:30'],
+ ['crack','碎裂','B','湮灭：崩毁小试，答对+18 / 答错-6。','湮灭','ruin:18'],
+ ['ash','灰烬','D','湮灭：燃尽后的余温，答对+3。','湮灭','guard:3'],
+ ['chaos','失律乐章','S','混乱：完全随机：±15/排除项/视为答对/免答+5。','混乱','chaos'],
+ ['offkey','走调','C','混乱：随机±8分。','混乱','chaosS'],
+ ['giggle','傻笑','D','混乱：无意义地笑，随机±4分。','混乱','chaosXS'],
+ ['silence','沉默领域','A','沉默：免答+5；上题答错再+5。','沉默','silence:5'],
+ ['mute','闭口','C','沉默：免答+4。','沉默','silence:4'],
+ ['hush','缄默','D','沉默：免答+2。','沉默','silence:2'],
+ ['heal','共沐神恩','S','牧师：答对+8；每名也答对的队友+2。','牧师','heal'],
+ ['firstaid','急救','B','牧师：紧急处理，答对+8。','牧师','guard:8'],
+ ['pray','祈祷','D','牧师：向神明祈祷，答对+3。','牧师','guard:3'],
+ ['wall','壁垒信仰','A','战士：答对+12；房主军心+3。','战士','wall'],
+ ['block','格挡','B','战士：举盾格挡，答对+8。','战士','guard:8'],
+ ['lineup','列队','D','战士：列队站好，答对+3。','战士','guard:3'],
+ ['overload','过载施法','A','法师：本题×2；下一题-8偿还。','法师','overload'],
+ ['charge','蓄力','B','法师：蓄力一击，答对+8。','法师','guard:8'],
+ ['trick','戏法','D','法师：小戏法，答对+3。','法师','guard:3'],
+ ['shadow','阴影穿梭','A','刺客：窥见全队分布+80%排除项；最后作答+5。','刺客','shadow'],
+ ['hide','隐匿','B','刺客：藏进阴影，窥见队友分布。','刺客','steal'],
+ ['dart','飞刀','D','刺客：一把飞刀，答对+3。','刺客','guard:3'],
+ ['hunt','感官追猎','A','猎人：标记猎物选项；选中之且为真+25。','猎人','hunt'],
+ ['trap','陷阱','B','猎人：布置陷阱，答对+8。','猎人','guard:8'],
+ ['hawkeye','鹰眼','D','猎人：看得更远，答对+3。','猎人','guard:3'],
+ ['law','律令传唱','S','歌者：宣告正确答案，按宣告作答+20，违背-5。','歌者','law'],
+ ['requiem2','安魂曲','B','歌者：安抚人心的旋律，答对+8。','歌者','guard:8'],
+ ['hum','哼唱','D','歌者：随口哼唱，答对+3。','歌者','guard:3'],
+ ['insight','洞察','B','通用：排除一个错误选项。','','peek'],
+ ['tough','坚韧','B','通用：答错不扣分。','','noLose'],
+ ['gambler','赌徒','B','通用：随机±10分。','','chaosS'],
+ ['inspire','灵感','B','通用：灵光一闪，答对+8。','','guard:8'],
+ ['teamwork','团队精神','B','通用：每名答对的队友+2。','','healLite'],
+ ['sixth','第六感','C','通用：窥见队友分布。','','steal'],
+ ['instinct','敏锐直觉','C','通用：排除一个错误选项。','','peek'],
+ ['calm','沉稳之心','C','通用：答错不扣分。','','noLose'],
+ ['coin','幸运硬币','C','通用：随机±15分。','','chaos'],
+ ['veteran','老兵经验','C','通用：答对+6。','','guard:6'],
+ ['ration','干粮袋','C','通用：结算时额外+1食物。','','loot1'],
+ ['pebble','小石子','D','通用：聊胜于无，答对+2。','','guard:2'],
+ ['breath','深呼吸','D','通用：稳住心态，答错不扣分。','','noLose'],
+ ['jog','热身','D','通用：活动筋骨，答对+2。','','guard:2'],
+];
+/* 天赋位：初始2个，天梯1200/1600/2000/2400各+1（原著） */
+function talentSlots(l){return 2+[1200,1600,2000,2400].filter(t=>l>=t).length}
+/* 可觉醒等级（原著：分段决定品级） */
+function talentGrade(l){return l>=2400?'SS':l>=2000?'S':l>=1600?'A':l>=1200?'B':'C'}
+const GRADE_ORDER=['D','C','B','A','S','SS'];
+function myTalentPool(){const g=profile.god,j=profile.job;return TALENT_POOL.filter(p=>p[4]===g||p[4]===j||p[4]==='')}
+function myFxTalents(){return (profile.talents||[]).filter(t=>TALENT_POOL.some(p=>p[0]===t.k))}
+function fxOf(t){const p=TALENT_POOL.find(x=>x[0]===t.k);return p?p[0]:''}
+
+/* ================= 个人试炼（保留） ================= */
+const OFFICIAL_TRIALS=[
+ {key:'off_clinic',title:'深夜诊所',reward:'bread',
+  story:'暴雨夜，你躲进一家亮着昏黄灯光的小诊所。里面的女人被绑在分娩椅上，腹部高高隆起，而"医生"背对着你，慢条斯理地打磨一把粗糙的钢锯，嘴里哼着歌。女人看到你，不求救，反而死死护住肚子，喃喃着："孩子不能掉在地上……"医生转过头，冲你露出阳光开朗的笑容："别急，下一位就轮到你做检查了。"',
+  question:'这家诊所里，最危险的存在是？',
+  options:['被绑在椅子上的女人','哼着歌打磨钢锯的医生','女人腹中的"孩子"','站在门口的你自己'],answer:2},
+ {key:'off_stairs',title:'第十三阶楼梯',reward:'drink',
+  story:'老宅的楼梯明明只有十二阶，但你每晚都能听见第十三声脚步落地。昨夜你鼓起勇气数了数——上去是十二阶，下来是十三阶。今晚，脚步声在你房门外停住了。门缝下塞进来一张纸条，上面是你自己的笔迹："别睡，睡了就换它上来。"',
+  question:'纸条说的"它"，最可能是什么？',
+  options:['你下楼时多迈出的那一步','住在镜子里的邻居','楼梯本身成了活物','给你塞纸条的人'],answer:0},
+ {key:'off_train',title:'雪夜列车',reward:'egg',
+  story:'末班车只剩你和对面织毛衣的老妇人。每一站广播都在报站，车窗外的站牌却全是空白。老妇人忽然抬头："小伙子，你上车前，是活人吗？"你愣住。她笑了："没事，下一站就到站了，该下车的下车，该留的留下。"你低头看票——终点站一栏写着：始发站。',
+  question:'你应该在哪一站下车？',
+  options:['广播报出的终点站','票上写的始发站','哪一站都不下车','跳车'],answer:1},
+ {key:'off_phone',title:'母亲的电话',reward:'bread',
+  story:'母亲去世三年，她的旧号码却在你生日那晚打了进来。那头是她熟悉的声音："乖，吃饭了吗？"你哭着说了很多，她静静听完："妈妈很好，就是下面有点冷。你爸爸在我旁边，他想和你说句话。"电话那头传来父亲的声音——可你的父亲，正坐在你对面啃苹果看报纸，抬起头问你："谁打来的？"',
+  question:'电话里自称"父亲"的声音，最可能是什么？',
+  options:['另一个世界的父亲','和母亲待在一起的"东西"','熟人的恶作剧','父亲失散的双胞胎'],answer:1},
+ {key:'off_neighbor',title:'不存在的邻居',reward:'drink',
+  story:'对门1301每晚都传出砸墙声，可物业说那间房空了五年。你贴门偷听，听到里面有人含糊地说："……还有七天……数清楚……别让它数错……"第二天你遇到对门"住户"，她热情地塞给你一张乔迁宴请柬。请柬背面有一行小字，笔迹和你一模一样："别去，但我已经吃过三次了。"',
+  question:'请柬背面的小字，为什么是你的笔迹？',
+  options:['未来的你留下的警告','对方模仿你的笔迹设局','你梦游时自己写的','印刷巧合'],answer:0},
+ {key:'off_mirror',title:'镜子里的灯',reward:'egg',
+  story:'熄灯后，室友说三楼盥洗室的镜子会在两点亮起烛光。你摸黑去看——镜子里真的点着一支白蜡烛，而"你"站在烛光后面，比你慢半拍地抬手。你停下，它也停下。你后退，它却往前走了一步。你猛然抬手关灯——黑暗里，镜子里的烛光还亮着，那个"你"正隔着镜面，无声地数着你的心跳。',
+  question:'对付它的正确做法是？',
+  options:['死死盯着它不动','立刻关上所有灯','一拳打碎镜子','转身拼命逃跑'],answer:1},
+];
+let trialView='list', curTrial=null, curTrialKey=null;
+
+async function renderTrials(){
+  trialView='list';
+  const {data:done}=await sb.from('trials_done').select('trial_key').eq('user_id',profile.id);
+  const doneKeys=new Set((done||[]).map(d=>d.trial_key));
+  const {data:userTrials}=await sb.from('trials_lib').select('*').eq('status','approved').order('id',{ascending:false}).limit(50);
+  const all=[...OFFICIAL_TRIALS.map(t=>({...t,official:true})),...(userTrials||[]).map(t=>({key:'db_'+t.id,title:t.title,story:t.story,question:t.question,options:t.options,answer:t.answer,reward:t.reward,author:t.author_name}))]
+    .filter(t=>!doneKeys.has(t.key));
+  const passed=doneKeys.size;
+  $('trials-body').innerHTML=`
+    <div style="text-align:center;color:var(--gold2);letter-spacing:4px;margin-bottom:4px">✦ 试 炼 长 廊 ✦</div>
+    <div class="dim" style="text-align:center;margin-bottom:4px;font-size:12px">已通关个人试炼 ${passed} 场 ｜ 天赋位 ${(profile.talents||[]).length}/${talentSlots(profile.ladder)} ｜ 当前可觉醒等级：${talentGrade(profile.ladder)}</div>
+    <div class="sec-t">多 人 试 炼 大 厅</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      ${MULTI_TRIALS.map(t=>`<button class="btn ghost sm" style="margin:0;font-size:12px;padding:7px 10px" onclick="createRoom('${t.key}')">＋《${esc(t.title)}》</button>`).join('')}
+    </div>
+    <div id="hall-box"><div class="dim" style="padding:10px 0">正在扫描大厅……</div></div>
+    <div class="card" style="padding:12px;margin-top:8px">
+      <div style="display:flex;gap:8px">
+        <input id="join-code" placeholder="输入房间号精确加入" maxlength="10">
+        <button class="btn sm" style="flex:none" onclick="joinRoom()">加入</button>
+      </div>
+    </div>
+    <div class="sec-t">个 人 试 炼（单人 · 奖励仅食物）</div>
+    ${all.length?all.map(t=>`
+      <div class="trial" style="cursor:pointer" onclick='openTrial(${JSON.stringify(t.key)})'>
+        <div class="tn">《${esc(t.title)}》 ${t.official?'<span class="tag" style="font-size:11px;padding:1px 8px">官方</span>':`<span class="dim" style="font-size:11px">by ${esc(t.author||'信徒')}</span>`}</div>
+        <div class="tp">奖励：${esc(ITEMS[t.reward]?.[0]||'食物')} ｜ 进入试炼 →</div>
+      </div>`).join('')
+      :'<div class="card dim" style="text-align:center;padding:20px">个人试炼均已通关，等待新的投稿</div>'}
+    <button class="btn ghost" onclick="trialView='submit';renderSubmit()">✎ 投稿试炼（需审核）</button>
+    <div id="review-box"></div>`;
+  renderReview();
+}
+async function openTrial(key){
+  curTrialKey=key;
+  if(key.startsWith('db_')){
+    const {data}=await sb.from('trials_lib').select('*').eq('id',key.slice(3)).single();
+    if(data)curTrial={key,title:data.title,story:data.story,question:data.question,options:data.options,answer:data.answer,reward:data.reward,author:data.author_name};
+  }else curTrial=OFFICIAL_TRIALS.find(t=>t.key===key);
+  if(!curTrial){toast('试炼不存在');return}
+  trialView='play';
+  $('trials-body').innerHTML=`
+    <button style="background:none;border:none;color:var(--dim);font-family:inherit;font-size:14px" onclick="renderTrials()">← 离开试炼</button>
+    <div class="card" style="margin-top:8px">
+      <div style="font-size:20px;color:var(--gold2);letter-spacing:2px;text-align:center">《${esc(curTrial.title)}》</div>
+      <div class="dim" style="text-align:center;margin:6px 0 14px;font-size:12px">个人试炼 · 危险自负 · 无得分</div>
+      <div style="line-height:2;font-size:15.5px;letter-spacing:.5px">${esc(curTrial.story)}</div>
+    </div>
+    <div class="card">
+      <div style="color:var(--gold);letter-spacing:2px;margin-bottom:12px">叩 问</div>
+      <div style="font-size:16px;margin-bottom:12px;line-height:1.7">${esc(curTrial.question)}</div>
+      ${curTrial.options.map((o,i)=>`<button class="quiz-opt" onclick="answerTrial(${i})">${esc(o)}</button>`).join('')}
+    </div>`;
+  $('trials-body').scrollTop=0;
+}
+async function answerTrial(i){
+  if(i===curTrial.answer){
+    await sb.from('trials_done').insert({user_id:profile.id,trial_key:curTrialKey}).then(()=>{},()=>{});
+    await giveItem(curTrial.reward,1);
+    toast(`试炼通过！获得【${ITEMS[curTrial.reward]?.[0]||'食物'}】×1`);
+    renderTrials();
+  }else toast('解读错误……故事仍未结束，再想想');
+}
+
+/* ---------- 试炼大厅 ---------- */
+async function loadHall(){
+  const box=$('hall-box');if(!box)return;
+  const {data:rs}=await sb.from('rooms').select('*').eq('status','wait').order('id',{ascending:false}).limit(20);
+  if(!rs||!rs.length){box.innerHTML='<div class="card dim" style="text-align:center;padding:16px">大厅空空如也<br><span style="font-size:12px">创建第一个房间，或等待其他信徒</span></div>';return}
+  const {data:ms}=await sb.from('members').select('room_id,user_id,name').in('room_id',rs.map(r=>r.id));
+  const cnt={},hostName={};
+  (ms||[]).forEach(m=>{cnt[m.room_id]=(cnt[m.room_id]||0)+1});
+  rs.forEach(r=>{const h=(ms||[]).find(m=>m.room_id===r.id&&m.user_id===r.host_id);hostName[r.id]=h?h.name:'???'});
+  box.innerHTML=rs.map(r=>{
+    const t=MULTI_TRIALS.find(x=>x.key===r.trial_key);
+    return `<div class="trial" style="cursor:pointer" onclick="joinHall(${r.id})">
+      <div class="tn">#${r.id} 《${esc(t?t.title:r.trial_key)}》 <span class="dim" style="font-size:11px">by ${esc(hostName[r.id]||'')}</span></div>
+      <div class="tp">${cnt[r.id]||0}/6 人 ｜ 点此处加入 →</div>
+    </div>`;
+  }).join('');
+}
+async function joinHall(id){
+  const {data:r}=await sb.from('rooms').select('*').eq('id',id).eq('status','wait').maybeSingle();
+  if(!r){toast('房间不存在或已开始');loadHall();return}
+  const {data:cnt}=await sb.from('members').select('id',{count:'exact',head:true}).eq('room_id',id);
+  if(cnt>=6){toast('房间已满');return}
+  const {error}=await sb.from('members').insert({room_id:id,user_id:profile.id,name:profile.name,god:profile.god,job:profile.job});
+  if(error){toast('你已在房间中');}
+  enterRoom(id,false);
+}
+
+/* ================= 多人联机 ================= */
+let myRoom=null, myRoomChannel=null, gPhase=-1, gAnswers=[], gUsed=[], gFxThis={};
+
+async function createRoom(tkey){
+  const {data,error}=await sb.from('rooms').insert({trial_key:tkey,host_id:profile.id}).select().single();
+  if(error){toast(error.message);return}
+  await sb.from('members').insert({room_id:data.id,user_id:profile.id,name:profile.name,god:profile.god,job:profile.job});
+  enterRoom(data.id,true);
+}
+async function joinRoom(){
+  const code=Number(($('join-code')||{}).value);
+  if(!code){toast('输入房间号');return}
+  const {data:r}=await sb.from('rooms').select('*').eq('id',code).eq('status','wait').maybeSingle();
+  if(!r){toast('房间不存在或已开始');return}
+  const {data:cnt}=await sb.from('members').select('id',{count:'exact',head:true}).eq('room_id',code);
+  if(cnt>=6){toast('房间已满');return}
+  const {error}=await sb.from('members').insert({room_id:code,user_id:profile.id,name:profile.name,god:profile.god,job:profile.job});
+  if(error){toast('你已在房间中');}
+  enterRoom(code,false);
+}
+async function enterRoom(rid,isHost){
+  const {data:r}=await sb.from('rooms').select('*').eq('id',rid).single();
+  myRoom=r; gPhase=-1; gAnswers=[]; gUsed=[]; gFxThis={};
+  renderWaiting(isHost);
+  if(myRoomChannel)sb.removeChannel(myRoomChannel);
+  myRoomChannel=sb.channel('room-'+rid)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'members',filter:'room_id=eq.'+rid},()=>renderWaiting(isHost))
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'rooms',filter:'id=eq.'+rid},p=>{myRoom=p.new;p.new.status==='play'?renderGame():p.new.status==='end'?renderResult():renderWaiting(isHost)})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'members',filter:'room_id=eq.'+rid},()=>{if(myRoom.status==='play')renderGameProgress()})
+    .subscribe();
+}
+async function leaveRoom(){
+  if(myRoomChannel)sb.removeChannel(myRoomChannel);
+  myRoom=null; renderTrials();
+}
+async function renderWaiting(isHost){
+  const {data:ms}=await sb.from('members').select('*').eq('room_id',myRoom.id);
+  const t=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+  $('trials-body').innerHTML=`
+    <button style="background:none;border:none;color:var(--dim);font-family:inherit;font-size:14px" onclick="leaveRoom()">← 离开房间</button>
+    <div class="card" style="margin-top:8px;text-align:center">
+      <div style="font-size:20px;color:var(--gold2);letter-spacing:2px">《${esc(t.title)}》</div>
+      <div class="dim" style="margin:6px 0">${esc(t.desc)}</div>
+      <div style="font-size:26px;color:var(--gold);letter-spacing:4px;margin:8px 0">房号 ${myRoom.id}</div>
+      <div class="dim" style="font-size:12px">把房号发给好友，或分享到世界频道</div>
+      <button class="btn ghost sm" style="margin-top:8px" onclick="shareRoom(${myRoom.id},'${esc(t.title)}')">分享到世界频道</button>
+    </div>
+    <div class="sec-t">队 友（${ms.length}/6）</div>
+    ${ms.map(m=>`<div class="me-row"><span>${esc(m.name)} <span class="dim" style="font-size:12px">${esc(m.god)}·${esc(m.job)}</span></span>${m.user_id===myRoom.host_id?'<span class="dim">房主</span>':''}</div>`).join('')}
+    ${isHost?`<button class="btn" onclick="startGame()">开 始 试 炼（${ms.length}人）</button>`:'<div class="dim" style="text-align:center;margin-top:10px">等待房主开始……</div>'}`;
+}
+async function shareRoom(id,title){
+  await sb.from('messages').insert({user_id:profile.id,channel:'world',path:profile.path,job:profile.job,content:`【试炼招募】多人试炼《${title}》房间号 ${id}，诚邀各位信徒！`});
+  toast('已分享到世界频道');
+}
+async function startGame(){
+  await sb.from('rooms').update({status:'play',phase:0}).eq('id',myRoom.id);
+}
+function renderGame(){
+  const t=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+  const i=myRoom.phase;
+  if(i!==gPhase){gPhase=i;gFxThis={}}
+  const q=t.questions[i];
+  const usable=myFxTalents().filter(x=>!gUsed.includes(x.k));
+  $('trials-body').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 2px 10px">
+      <span style="color:var(--gold2);letter-spacing:2px">《${esc(t.title)}》 第${i+1}/${t.questions.length}问</span>
+      <span class="dim" style="font-size:12px" id="g-progress"></span>
+    </div>
+    <div class="card">
+      <div style="font-size:16.5px;line-height:1.8;margin-bottom:6px">${esc(q.q)}</div>
+      <div id="fx-hint"></div>
+      ${usable.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0" id="fx-row">
+        ${usable.map(x=>`<button class="btn ghost sm" style="margin:0;font-size:12px;padding:6px 10px" onclick="useFx('${x.k}')">✦ ${esc(x.n)}</button>`).join('')}
+      </div>`:''}
+      ${q.opts.map((o,oi)=>`<button class="quiz-opt" id="gq-${oi}" onclick="answerGQ(${oi})">${esc(o)}</button>`).join('')}
+    </div>
+    <div class="dim" style="text-align:center;font-size:12px">风险项答对+20分，答错-5分 ｜ 已作答后等待队友</div>`;
+  renderGameProgress();
+  $('trials-body').scrollTop=0;
+}
+async function useFx(k){
+  const t=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+  const q=t.questions[gPhase];
+  gFxThis[gPhase]=k; gUsed.push(k);
+  const {data:members}=await sb.from('members').select('user_id,god,answers').eq('room_id',myRoom.id);
+  const gods=(members||[]).map(m=>m.god);
+  const hasGod=g=>gods.includes(g);
+  const PEAK={文明:['秩序','战争','真理'],生命:['诞育','繁荣','死亡'],沉沦:['污堕','腐朽','湮灭'],混沌:['混乱','痴愚','沉默'],虚无:['欺诈','命运'],存在:['记忆','时间']};
+  const lifeMates=(members||[]).filter(m=>['诞育','繁荣','死亡'].includes(m.god)&&m.user_id!==profile.id).length;
+  const hint=(c,txt)=>{$('fx-hint').innerHTML=`<div style="color:${c};font-size:13px;margin:8px 0;line-height:1.6">${txt}</div>`};
+  const dimOpt=i=>{const b=$('gq-'+i);if(b)b.style.opacity=.3,b.disabled=true};
+  const exclOne=()=>{const w=[0,1,2,3].filter(x=>x!==q.ans);dimOpt(w[Math.floor(Math.random()*w.length)])};
+  const showTruth=()=>hint('var(--gold2)','真相在你眼中展开——答案是「'+esc(q.opts[q.ans])+'」。');
+
+  if(k==='lie'){hint('var(--chaos)','"我从不骗人。"——谎言已成真。'+(hasGod('记忆')?'<br>但【记忆】信徒正注视着，冒险加成被记录封存。':''))}
+  else if(k==='timefield'){gFxThis.nextPen=(gFxThis.nextPen||0)+5;showTruth();hint('var(--gold2)','真相已窥见。<span style="color:#e74c3c">时间的势能将在下一题向你索取-5分。</span>')}
+  else if(k==='master'){exclOne();hint('var(--gold2)','欺骗大师：一个错误选项已被你的谎言否决。答对再+5。')}
+  else if(k==='dice'){const d=1+Math.floor(Math.random()*20);const v=d-10;gFxThis.diceV=v;hint('var(--exist)','命运之骰转出了 '+d+' 点（'+(v>=0?'+':'')+v+'分）'+(d===20?'——<b>命运眷顾！本题满分</b>':d===1?'——<b>大失败，本题-10</b>':''))}
+  else if(k==='memory'){if(hasGod('欺诈')){exclOne();setTimeout(exclOne,100);hint('var(--gold2)','欺诈就在身边！记忆回溯，<b>两个</b>错误选项被翻出。')}else{exclOne();hint('var(--gold2)','上一次轮回的记忆浮现：排除一个错误选项。')}}
+  else if(k==='anchor'){hint('var(--civil)','秩序锚定：答对+10，答错惩罚减半。'+(profile.job==='战士'?'<br>壁垒与锚点共鸣，额外+5。':''))}
+  else if(k==='birth'){hint('var(--life)','创生草籽已撒下：答对+8，队伍里有 '+lifeMates+' 名生命命途队友，每人再+3。')}
+  else if(k==='wither'){hint('var(--life)','只待枯萎：生长开始，连续答对将叠加分数（当前+'+(Math.min(10,(gFxThis.ws||0)*2))+')，结算食物翻倍。')}
+  else if(k==='requiem'){hint('var(--void)','送葬之歌响起：答错不扣分，且失败将转化为下一题的力量。')}
+  else if(k==='rot'){hint('var(--sink)','众生应腐：先付出-5分。若答对，腐朽之力回馈+15。'+(hasGod('繁荣')?'<br>【繁荣】的气息对冲了你的腐朽，效果-5。':''))}
+  else if(k==='lust'){const ms=(members||[]).filter(m=>m.user_id!==profile.id&&(m.answers||[])[gPhase]!=null).slice(0,3);
+    hint('var(--sink)','欲望之眼睁开——'+(ms.length?ms.map(m=>'【'+esc(GOD_INFO[m.god]?.path||'')+'信徒】选了 '+String.fromCharCode(65+(m.answers[gPhase]))+ ' 项').join('；'):'尚无人作答')+'。<br>跟随多数且答对，沉沦再+5。')}
+  else if(k==='ruin'){hint('var(--sink)','崩毁之触：本题规则崩解。答对<b>+30</b>，答错<b>-10</b>。')}
+  else if(k==='chaos'){const r=Math.random();
+    if(r<.25){const v=Math.floor(Math.random()*31)-15;gFxThis.chaosV=v;hint('var(--chaos)','失律乐章奏响：命运的杂音 '+(v>=0?'+':'')+v+' 分。')}
+    else if(r<.5){exclOne();hint('var(--chaos)','失律乐章奏响：规则扭曲，一个错误选项消失了。')}
+    else if(r<.75){gFxThis.chaosCheat=true;hint('var(--chaos)','失律乐章奏响：对错在你眼中颠倒——本题视为答对。')}
+    else{gFxThis.chaosSkip=true;hint('var(--chaos)','失律乐章奏响：你放弃了这道题的答案，保底+5。')}}
+  else if(k==='truthsee'){exclOne();setTimeout(exclOne,100);hint('var(--civil)','真理之视：凡人皆愚。两个错误选项无处遁形（冒险奖励-5，因为你太自信了）。')}
+  else if(k==='silence'){hint('var(--dim)','沉默领域展开：免答+5分。'+(gFxThis.lastWrong?'上一题的创伤被沉默抚平，再+5。':'')+'（仍需点选任意选项以提交）')}
+  else if(k==='heal'){const healed=(members||[]).filter(m=>m.user_id!==profile.id&&(m.answers||[])[gPhase]===q.ans).length;
+    hint('var(--life)','共沐神恩：治疗链展开，答对+8，已有 '+healed+' 名队友答对，每人传递+2。')}
+  else if(k==='shadow'){const dist=[0,0,0,0];(members||[]).forEach(m=>{const a=(m.answers||[])[gPhase];if(a!=null&&a<4)dist[a]++});
+    if(Math.random()<.8)exclOne();
+    hint('var(--sink)','阴影穿梭：你遁入暗处窥见——A×'+dist[0]+' B×'+dist[1]+' C×'+dist[2]+' D×'+dist[3]+'。若你是最后作答者，+5。')}
+  else if(k==='hunt'){const prey=Math.floor(Math.random()*4);gFxThis.prey=prey;
+    hint('var(--chaos)','感官追猎：你的猎物是 <b>'+String.fromCharCode(65+prey)+' 项</b>「'+esc(q.opts[prey])+'」。选中它且它为真，+25分。')}
+  else if(k==='overload'){gFxThis.nextPen=(gFxThis.nextPen||0)+8;hint('var(--exist)','过载施法：本题得分×2。<span style="color:#e74c3c">透支的债，下一题-8。</span>')}
+  else if(k==='law'){showTruth();gFxThis.lawAns=q.ans;hint('var(--gold2)','律令已宣告：按此作答+20；违背自己的律令，-5。')}
+  else if(k==='wall'){hint('var(--civil)','壁垒信仰：答对+12，岿然不动。'+(myRoom.host_id===profile.id?'<br>你是房主，军心+3。':''))}
+  else{const ft=(talentFxOf(k)||'').split(':')[0];
+    if(ft==='steal'){const dist2=[0,0,0,0];(members||[]).forEach(m=>{const a=(m.answers||[])[gPhase];if(a!=null&&a<4&&m.user_id!==profile.id)dist2[a]++});hint('var(--sink)','你窥见了暗流——A×'+dist2[0]+' B×'+dist2[1]+' C×'+dist2[2]+' D×'+dist2[3]+'。')}
+    else if(ft==='peek'){exclOne();hint('var(--gold2)','直觉闪现：一个错误选项被排除。')}
+    else if(ft==='peek5'){exclOne();hint('var(--gold2)','欺骗大师：一个错误选项被否决，答对再+5。')}
+    else if(ft==='chaosS'){const v=Math.floor(Math.random()*21)-10;gFxThis.chaosV=v;hint('var(--chaos)','命运的杂音 '+(v>=0?'+':'')+v+' 分。')}
+    else if(ft==='chaosXS'){const v=Math.floor(Math.random()*9)-4;gFxThis.chaosV=v;hint('var(--chaos)','无意义的杂音 '+(v>=0?'+':'')+v+' 分。')}
+    else if(ft==='silence'){hint('var(--dim)','沉默应对：免答+'+((talentFxOf(k).split(':')[1])||5)+'分（仍需点选任意项提交）。')}
+    else if(ft==='noLose'){hint('var(--void)','稳如泰山：本题答错不扣分。')}
+    else if(ft==='guard'){hint('var(--gold)','天赋已发动：答对+'+(talentFxOf(k).split(':')[1]||5)+'分。')}
+    else if(ft==='healLite'){hint('var(--life)','团队的力量：每名答对的队友+2分。')}
+    else hint('var(--gold)','天赋已发动。')}
+  if($('fx-row'))$('fx-row').style.display='none';
+}
+async function answerGQ(oi){
+  const t=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+  const q=t.questions[gPhase];
+  if(gAnswers[gPhase]!=null)return;
+  const k=gFxThis[gPhase];
+  const {data:members}=await sb.from('members').select('user_id,god,answers').eq('room_id',myRoom.id);
+  const gods=(members||[]).map(m=>m.god);
+  const hasGod=g=>gods.includes(g);
+  const lifeMates=(members||[]).filter(m=>['诞育','繁荣','死亡'].includes(m.god)&&m.user_id!==profile.id).length;
+  const matesRight=(members||[]).filter(m=>m.user_id!==profile.id&&(m.answers||[])[gPhase]===q.ans).length;
+  const dist=[0,0,0,0];(members||[]).forEach(m=>{const a=(m.answers||[])[gPhase];if(a!=null&&a<4&&m.user_id!==profile.id)dist[a]++});
+  const majority=dist.indexOf(Math.max(...dist));
+  const answeredByOthers=(members||[]).filter(m=>m.user_id!==profile.id&&(m.answers||[])[gPhase]!=null).length;
+  const totalOthers=(members||[]).length-1;
+
+  let pts=0, right=false;
+  const _fx=(talentFxOf(k)||'').split(':')[0];
+  const _arg=k?(talentFxOf(k).includes(':')?Number(talentFxOf(k).split(':')[1]):0):0;
+  if(_fx==='silence'){
+    pts=_arg+(k==='silence'&&gFxThis.lastWrong?5:0);
+  }else if(k==='chaos'&&gFxThis.chaosSkip){
+    pts=5;
+  }else{
+    right=(k==='lie')||(k==='chaos'&&gFxThis.chaosCheat)||oi===q.ans;
+    if(right){
+      if(gFxThis.diceV===10){pts=25}
+      else{
+        pts=(q.risky===oi?20:10);
+        if(k==='lie'&&q.risky===oi&&!hasGod('记忆'))pts+=5;
+        if(k==='master')pts+=5;
+        if(k==='anchor'){pts+=10;if(profile.job==='战士')pts+=5}
+        if(k==='birth')pts+=8+lifeMates*3;
+        if(k==='wither'){gFxThis.ws=(gFxThis.ws||0);pts+=Math.min(10,gFxThis.ws*2)}
+        if(k==='heal')pts+=8+matesRight*2;
+        if(k==='lust'&&oi===majority&&dist[majority]>0)pts+=5;
+        if(k==='ruin')pts+=30;
+        if(k==='shadow'&&answeredByOthers===totalOthers&&totalOthers>0)pts+=5;
+        if(k==='hunt'&&gFxThis.prey===oi)pts+=25;
+        if(k==='law'&&gFxThis.lawAns===oi)pts+=20;
+        if(k==='wall'){pts+=12;if(myRoom.host_id===profile.id)pts+=3}
+        if(k==='truthsee'&&q.risky===oi)pts-=5;
+        if(_fx==='guard')pts+=_arg;
+        if(_fx==='ruin')pts+=_arg;
+        if(_fx==='healLite')pts+=matesRight*2;
+        if(k==='blood'&&q.risky===oi)pts=(q.risky===oi&&oi===q.ans)?40:-10;
+        if(k==='double0')pts*=2;
+      }
+      if(k==='overload')pts*=2;
+      if(k==='dice'&&gFxThis.diceV!=null&&gFxThis.diceV!==10)pts+=gFxThis.diceV;
+      if((k==='chaos'||_fx==='chaosS'||_fx==='chaosXS')&&gFxThis.chaosV!=null)pts+=gFxThis.chaosV;
+    }else{
+      if(k==='dice'&&gFxThis.diceV===-9)pts=-10;
+      else if(_fx==='ruin')pts=-(_arg>=18?6:10);
+      else if(k==='law'&&gFxThis.lawAns!=null)pts=-5;
+      else if(k==='requiem'||k==='calm')pts=0;
+      else if(k==='anchor')pts=(q.risky===oi?-2:0);
+      else if(k==='rot')pts=0;
+      else pts=(q.risky===oi?-5:0);
+      if(k==='rot'){pts-=5;if(hasGod('繁荣'))pts-=5}
+      if(k==='requiem')gFxThis.nextBonus=(gFxThis.nextBonus||0)+8;
+      gFxThis.lastWrong=true;
+    }
+    if(k==='rot'&&right)pts+=15;
+    if(k==='rot'&&!right)pts+=0;
+  }
+  /* 跨题结算：上题的遗留 */
+  if(gFxThis.penApply){pts-=gFxThis.penApply;gFxThis.penApply=0}
+  if(gFxThis.bonApply){pts+=gFxThis.bonApply;gFxThis.bonApply=0}
+  /* 为下一题布局 */
+  if(gFxThis.nextPen){gFxThis.penApply=gFxThis.nextPen;gFxThis.nextPen=0}
+  if(gFxThis.nextBonus){gFxThis.bonApply=gFxThis.nextBonus;gFxThis.nextBonus=0}
+  if(right&&k==='wither')gFxThis.ws=(gFxThis.ws||0)+1;
+  pts=Math.max(0,Math.round(pts));
+  gAnswers[gPhase]=oi;
+  gFxThis.lastRight=right;
+  const {data:me}=await sb.from('members').select('*').eq('room_id',myRoom.id).eq('user_id',profile.id).single();
+  const ans=[...(me.answers||[])];ans[gPhase]=oi;
+  const used=[...(me.used||[])];if(k)used[gPhase]=k;
+  await sb.from('members').update({answers:ans,used:used,score:(me.score||0)+pts}).eq('id',me.id);
+  document.querySelectorAll('#trials-body .quiz-opt').forEach((b,bi)=>{b.style.opacity=bi===oi?1:.35;b.onclick=null});
+  renderGameProgress(true);
+  const {data:all}=await sb.from('members').select('answers').eq('room_id',myRoom.id);
+  const done=(all||[]).filter(m=>(m.answers||[])[gPhase]!=null).length;
+  if(done===all.length){
+    const t2=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+    if(gPhase+1<t2.questions.length){
+      gFxThis.lastWrong=gFxThis.lastRight===false;
+      await sb.from('rooms').update({phase:gPhase+1}).eq('id',myRoom.id);
+    }
+    else await sb.from('rooms').update({status:'end'}).eq('id',myRoom.id);
+  }
+}
+async function renderGameProgress(justAnswered){
+  if(!myRoom||myRoom.status!=='play')return;
+  const {data:all}=await sb.from('members').select('answers').eq('room_id',myRoom.id);
+  const done=(all||[]).filter(m=>(m.answers||[])[gPhase]!=null).length;
+  if($('g-progress'))$('g-progress').textContent=`已作答 ${done}/${all.length}`;
+}
+async function renderResult(){
+  const t=MULTI_TRIALS.find(x=>x.key===myRoom.trial_key);
+  const {data:ms}=await sb.from('members').select('*').eq('room_id',myRoom.id).order('score',{ascending:false});
+  const rank=(ms||[]).findIndex(m=>m.user_id===profile.id);
+  const me=ms[rank];
+  const {data:myRow}=await sb.from('members').select('answers').eq('room_id',myRoom.id).eq('user_id',profile.id).single();
+  const correct=(myRow?.answers||[]).filter((a,i)=>a===t.questions[i].ans).length;
+  let lootTxt='';
+  if(!me.claimed){
+    const {data:meRows}=await sb.from('members').select('answers,used').eq('room_id',myRoom.id).eq('user_id',profile.id).single();
+    const total=t.questions.length;
+    const grade=correct>=total?'S':(correct>=Math.ceil(total*0.7)?'A':'B');
+    let n=rank===0?3:rank===1?2:1;
+    if((profile.talents||[]).some(x=>x.k==='wither'))n*=2;
+    if((meRows.used||[]).includes('ration'))n+=1;
+    await giveItem(t.reward,n);
+    const roadGain=correct*2+(grade==='S'?10:grade==='A'?5:2);
+    await addScore(roadGain,0);
+    let extra='';
+    /* 天赋觉醒：概率15%，仅限本信仰/本职业/通用池，品级不超过天梯分段 */
+    if(profile.ladder>=1200&&(profile.talents||[]).length<talentSlots(profile.ladder)&&Math.random()<0.08){
+      const g=talentGrade(profile.ladder);
+      const cand=myTalentPool().filter(p=>GRADE_ORDER.indexOf(p[2])<=GRADE_ORDER.indexOf(g)&&!(profile.talents||[]).some(x=>x.k===p[0]));
+      if(cand.length){
+        const p=cand[Math.floor(Math.random()*cand.length)];
+        const talents=[...(profile.talents||[]),{k:p[0],n:p[1],r:p[2],d:p[3]}];
+        profile.talents=talents;
+        await sb.from('profiles').update({talents}).eq('id',profile.id);
+        extra=`觉醒了${p[2]}级天赋【${p[1]}】！`;
+      }
+    }
+    /* 道具奖励：品质主要由天梯分数决定，其次游戏评分，再是运气 */
+    if(!extra){
+      const TIER={0:['berry','can','dicecharm','sachet','rustkey','monocle','candy','rope','bread','drink','jerky'],
+        1:['bandage','flint','egg','badge','watch','smilemask','photo','seedbag','candle','mirror','score','bell','sword','blankbook'],
+        2:['glory','dead','witherrose'],
+        3:['diceS'],
+        4:['maskSS']};
+      const baseTier=profile.ladder>=2400?4:profile.ladder>=2000?3:profile.ladder>=1600?2:profile.ladder>=1200?1:0;
+      const gradeFix={S:1,A:0,B:-1}[grade];
+      const luck=Math.floor(Math.random()*3)-1;
+      const tier=Math.max(0,Math.min(4,baseTier+gradeFix+luck));
+      const pick=()=>{const r=Math.random();const lv=r<0.45?tier:(r<0.8?Math.max(0,tier-1):0);const pool=TIER[lv];return pool[Math.floor(Math.random()*pool.length)]};
+      const k1=pick();
+      await giveItem(k1,1);
+      extra=`奖励【${ITEMS[k1][0]}】（天梯${baseTier>=3?'高位':baseTier>=1?'':'偏低'}${gradeFix>0?'，表现优异':gradeFix<0?'，表现欠佳':''}${luck>0?'，运气眷顾':luck<0?'，运气不佳':''}）`;
+      if(grade==='S'){const k2=pick();await giveItem(k2,1);extra+=`，【${ITEMS[k2][0]}】`}
+    }
+    await sb.from('members').update({claimed:1}).eq('room_id',myRoom.id).eq('user_id',profile.id);
+    lootTxt=`评价【${grade}】｜食物×${n}，登神之路+${roadGain}<br><span style="font-size:12px" class="dim">奖励品质：天梯分段为主 · 表现为辅 · 运气微调</span><br>${extra}`;
+  }
+  $('trials-body').innerHTML=`
+    <div style="text-align:center;color:var(--gold2);letter-spacing:4px;margin-bottom:10px">✦ 试 炼 结 算 ✦</div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;color:var(--gold2)">《${esc(t.title)}》</div>
+      <div style="margin:10px 0;font-size:17px">你的排名：第 ${rank+1} 位 ｜ ${me.score} 分 ｜ 答对 ${correct}/${t.questions.length}</div>
+      <div style="color:var(--gold);margin-bottom:8px">${lootTxt||'奖励已领取'}</div>
+    </div>
+    <div class="sec-t">队 伍 评 分</div>
+    ${ms.map((m,i)=>`<div class="rank-row ${i===0?'first':''} ${m.user_id===profile.id?'mine':''}"><span>第${i+1}位 · ${esc(m.name)}</span><span class="dim">${m.score}分</span></div>`).join('')}
+    <button class="btn" onclick="leaveRoom()" style="margin-top:14px">返 回 试 炼 长 廊</button>`;
+}
+
+/* ---------- 投稿与审核（同 v4） ---------- */
+function renderSubmit(){
+  $('trials-body').innerHTML=`
+    <button style="background:none;border:none;color:var(--dim);font-family:inherit;font-size:14px" onclick="renderTrials()">← 返回</button>
+    <div class="card" style="margin-top:8px">
+      <div style="color:var(--gold);letter-spacing:2px;margin-bottom:10px">投 稿 试 炼</div>
+      <input id="sub-title" maxlength="20" placeholder="试炼标题">
+      <textarea id="sub-story" rows="6" placeholder="故事内容：恐怖、诡异、悬疑……玩家需要解读它" style="margin-top:8px"></textarea>
+      <input id="sub-q" maxlength="60" placeholder="问题" style="margin-top:8px">
+      <input id="sub-o1" maxlength="40" placeholder="选项一" style="margin-top:8px">
+      <input id="sub-o2" maxlength="40" placeholder="选项二">
+      <input id="sub-o3" maxlength="40" placeholder="选项三">
+      <input id="sub-o4" maxlength="40" placeholder="选项四">
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <span class="dim" style="flex:none;font-size:13px">正确选项</span>
+        <select id="sub-ans" style="flex:1;background:var(--card);border:1px solid rgba(212,175,55,.3);color:var(--text);padding:10px;border-radius:9px;font-family:inherit">
+          <option value="0">选项一</option><option value="1">选项二</option><option value="2">选项三</option><option value="3">选项四</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <span class="dim" style="flex:none;font-size:13px">通关奖励</span>
+        <select id="sub-reward" style="flex:1;background:var(--card);border:1px solid rgba(212,175,55,.3);color:var(--text);padding:10px;border-radius:9px;font-family:inherit">
+          <option value="bread">手指面包</option><option value="drink">罐装粘液饮料</option><option value="egg">仿眼球蛋糕</option>
+        </select>
+      </div>
+      <button class="btn" onclick="submitTrial()">提 交 审 核</button>
+    </div>`;
+}
+async function submitTrial(){
+  const t=$('sub-title').value.trim(),s=$('sub-story').value.trim(),q=$('sub-q').value.trim();
+  const o=[$('sub-o1').value.trim(),$('sub-o2').value.trim(),$('sub-o3').value.trim(),$('sub-o4').value.trim()];
+  if(!t||!s||!q||o.some(x=>!x)){toast('所有内容都要填写');return}
+  const {error}=await sb.from('trials_lib').insert({title:t,story:s,question:q,options:o,answer:Number($('sub-ans').value),reward:$('sub-reward').value,author:profile.id,author_name:profile.name});
+  if(error){toast(error.message);return}
+  toast('已提交，等待审核通过后将出现在试炼列表');
+  renderTrials();
+}
+let isVisitor=false;
+async function renderReview(){
+  if(!isVisitor)return;
+  const {data}=await sb.from('trials_lib').select('*').eq('status','pending').order('id',{ascending:false}).limit(20);
+  const box=$('review-box');if(!box)return;
+  box.innerHTML=`<div style="margin:16px 0 8px;color:var(--blood);letter-spacing:2px;font-size:14px">✎ 待审核投稿（${(data||[]).length}）</div>`+
+    ((data||[]).map(t=>`
+      <div class="trial">
+        <div class="tn">《${esc(t.title)}》 <span class="dim" style="font-size:11px">by ${esc(t.author_name)}</span></div>
+        <div class="dim" style="font-size:12px;margin:6px 0;line-height:1.6;max-height:80px;overflow:hidden">${esc(t.story)}</div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn sm" onclick="reviewTrial(${t.id},'approved')">通过</button>
+          <button class="btn sm blood" onclick="reviewTrial(${t.id},'rejected')">拒绝</button>
+        </div>
+      </div>`).join('')||'<div class="dim">无</div>');
+}
+async function reviewTrial(id,status){
+  await sb.from('trials_lib').update({status}).eq('id',id);
+  toast(status==='approved'?'已通过，全服可见':'已拒绝');
+  renderReview();
+}
+
+/* ---------- 背包 ---------- *//* ---------- 背包 ---------- *//* ---------- 背包 ---------- */
+async function renderBag(){
+  const {data:inv}=await sb.from('inventory').select('*').eq('user_id',profile.id);
+  const list=(inv||[]).filter(i=>i.count>0);
+  $('bag-body').innerHTML=`
+    <div style="text-align:center;color:var(--gold2);letter-spacing:4px;margin-bottom:4px">✦ 随 身 空 间 ✦</div>
+    <div class="dim" style="text-align:center;margin-bottom:16px">保险立柜大小的随身空间，存放最重要的东西</div>
+    ${list.length?list.map(i=>{
+      const it=ITEMS[i.item_key]||[i.item_key,'?',''];
+      return `<div class="item-row">
+        <span style="flex:1"><b>${esc(it[0])}</b> <span class="rank ${it[1]==='S'||it[1]==='SS'?'ss':''}" style="float:none">${it[1]}</span> <span class="dim">×${i.count}</span><br>
+        <span class="dim" style="font-size:12px;line-height:1.5">${esc(it[2])}</span></span>
+        <button class="btn sm" style="flex:none" onclick="useItem('${i.item_key}')">使用</button>
+      </div>`;
+    }).join(''):'<div class="dim" style="text-align:center;padding:30px 0">空空如也</div>'}`;
+}
+async function useItem(key){
+  const {data:inv}=await sb.from('inventory').select('*').eq('user_id',profile.id).eq('item_key',key).maybeSingle();
+  if(!inv||inv.count<1)return;
+  if(inv.count<=1)await sb.from('inventory').delete().eq('id',inv.id);
+  else await sb.from('inventory').update({count:inv.count-1}).eq('id',inv.id);
+  const g=ITEMS[key][3]||[1,5];
+  const gain=g[0]+Math.floor(Math.random()*(g[1]-g[0]+1));
+  addScore(gain,0);
+  toast(`使用了【${ITEMS[key][0]}】，登神之路+${gain}`);
+  renderBag();
+}
+async function giveItem(key,count){
+  const {data:ex}=await sb.from('inventory').select('*').eq('user_id',profile.id).eq('item_key',key).maybeSingle();
+  if(ex)await sb.from('inventory').update({count:ex.count+count}).eq('id',ex.id);
+  else await sb.from('inventory').insert({user_id:profile.id,item_key:key,count});
+}
+
+/* ---------- 面板（含双排行榜） ---------- */
+function renderPanel(){
+  const p=profile, g=GOD_INFO[p.god]||{desc:''}, jt=JOBS[p.job]?.talent||['','?',''];
+  const talents=p.talents||[], skills=p.skills||[];
+  const slots=talentSlots(p.ladder);
+  const unlockAt=['初始','初始','天梯1200','天梯1600','天梯2000','天梯2400'];
+  let slotsHtml='';
+  for(let i=0;i<slots;i++){
+    const t=talents[i];
+    slotsHtml+=t?`<div class="talent"><span class="rank ${t.r==='SS'?'ss':''}">${t.r}</span>
+        <div class="tt">${esc(t.n)}</div><div class="td">${esc(t.d)}<span style="color:var(--exist)">　｜试炼中可发动</span></div></div>`
+      :`<div class="talent" style="opacity:.45;border-style:dashed"><div class="tt dim">◇ 空 天 赋 位</div>
+        <div class="td">${i<2?'初始天赋位，于个人/多人试炼中觉醒':'需'+unlockAt[i]+'后解锁'}</div></div>`;
+  }
+  $('panel-body').innerHTML=`
+    <div class="p-name">${esc(p.name)}</div>
+    <div class="p-tags"><span class="tag">${esc(p.path)}</span>
+      <span class="tag" style="color:var(--gold);border-color:var(--gold)">${esc(p.god)}</span>
+      <span class="tag">${esc(p.job)}</span></div>
+    <div class="score-grid">
+      <div class="score-card"><div class="dim">登神之路</div><div class="n">${p.ladder}</div>
+        <div class="dim" style="font-size:11px">低于1000分，死亡</div>
+        <div class="bar"><i style="width:${Math.min(100,p.ladder/24)}%"></i></div></div>
+      <div class="score-card"><div class="dim">觐见之梯</div><div class="n">${p.divine_road}</div>
+        <div class="bar"><i style="width:${Math.min(100,p.divine_road/2)}%"></i></div></div>
+    </div>
+    <div class="sec-t">登 神 之 路 · 天 梯 榜</div>
+    <div class="card" style="padding:10px 12px" id="rank-ladder"><div class="dim">加载中……</div></div>
+    <div class="sec-t">觐 见 之 梯（本信仰与对立信仰）</div>
+    <div class="dim" style="margin:-6px 0 8px 2px;font-size:12px">你只能看到【${esc(p.god)}】与【${esc(ENEMY[p.god]||'')}】信徒的排名</div>
+    <div class="card" style="padding:10px 12px" id="rank-road"><div class="dim">加载中……</div></div>
+    <div class="sec-t">天 赋（${talents.length} / ${slots} 位 · 可觉醒等级 ${talentGrade(p.ladder)}）</div>
+    <div class="dim" style="margin:-6px 0 8px 2px;font-size:12px">天赋位于天梯 1200 / 1600 / 2000 / 2400 分段解锁更多空位，觉醒品级随分段提升</div>
+    ${slotsHtml||'<div class="card dim" style="text-align:center;padding:14px">无空位</div>'}
+    <div class="sec-t">职 业 初 始 天 赋（未觉醒）</div>
+    <div class="talent" style="opacity:.6"><div class="tt">【${esc(p.job)}】${jt[0]}</div>
+      <div class="td">${jt[2]}<br><span style="color:#c0392b">初始天赋，尚未觉醒</span></div></div>
+    <div class="sec-t">技 能</div>
+    ${skills.length?`<div class="card" style="padding:12px"><div class="skill-chips">${skills.map(s=>`<span>${esc(s)}</span>`).join('')}</div></div>`
+      :'<div class="card dim" style="text-align:center;padding:18px">尚未获得技能<br><span style="font-size:12px">通过试炼领悟</span></div>'}`;
+  loadLadder(); loadRoad();
+}
+async function loadLadder(){
+  const {data}=await sb.from('profiles').select('id,name,god,job,ladder').order('ladder',{ascending:false}).limit(20);
+  const box=$('rank-ladder');if(!box)return;
+  box.innerHTML=(data&&data.length)?data.map((r,i)=>`
+    <div class="rank-row ${i===0?'first':''} ${r.id===profile.id?'mine':''}">
+      <span>第${i+1}位 · ${esc(r.name)}</span>
+      <span class="dim" style="font-size:12px">${esc(r.god)}·${esc(r.job)} ｜ ${r.ladder}分</span>
+    </div>`).join(''):'<div class="dim" style="text-align:center;padding:14px">虚位以待</div>';
+}
+async function loadRoad(){
+  const gods=[profile.god,ENEMY[profile.god]].filter(Boolean);
+  const {data}=await sb.from('profiles').select('id,name,god,job,divine_road').in('god',gods).order('divine_road',{ascending:false}).limit(20);
+  const box=$('rank-road');if(!box)return;
+  box.innerHTML=(data&&data.length)?data.map((r,i)=>`
+    <div class="rank-row ${i===0?'first':''} ${r.id===profile.id?'mine':''}">
+      <span>第${i+1}位 · ${esc(r.name)} <span class="dim" style="font-size:11px">【${esc(r.god)}】</span></span>
+      <span class="dim" style="font-size:12px">${r.divine_road}分</span>
+    </div>`).join(''):'<div class="dim" style="text-align:center;padding:14px">虚位以待</div>';
+}
+
+/* ---------- 我的 ---------- *//* ---------- 我的 ---------- */
+function renderMe(){
+  $('me-body').innerHTML=`
+    <div class="card" style="text-align:center;padding:22px 16px">
+      <div style="font-size:24px;color:var(--gold2);letter-spacing:3px">${esc(profile.name)}</div>
+      <div class="dim" style="margin-top:6px">【${esc(profile.path)}·${esc(profile.god)}】 ${esc(profile.job)}</div>
+    </div>
+    <div class="me-row"><span>修改名字</span><button onclick="rename()">修改</button></div>
+    <button class="btn blood" onclick="doLogout()" style="margin-top:20px">退出登录</button>
+    <div class="dim" style="text-align:center;margin-top:16px">诸神愚戏 · 信仰游戏</div>`;
+}
+async function rename(){
+  const n=prompt('输入新的名字（12字以内）',profile.name);
+  if(!n||!n.trim())return;
+  const {error}=await sb.from('profiles').update({name:n.trim().slice(0,12)}).eq('id',profile.id);
+  if(error){toast(error.message);return}
+  profile.name=n.trim().slice(0,12);
+  $('h-name').textContent=profile.name;
+  renderMe(); toast('名字已更改');
+}
+async function doLogout(){await sb.auth.signOut();location.reload()}
+
+/* ---------- 好友 / 私聊 ---------- */
+let dmFriend=null;
+async function renderFriends(){
+  $('friends-main').style.display='block';
+  $('dm-pane').style.display='none';
+  const {data:reqs}=await sb.from('friend_requests').select('*,profiles!friend_requests_from_id_fkey(name,god,job)').eq('to_id',profile.id).eq('status','pending');
+  const {data:fl}=await sb.from('friends').select('friend_id').eq('user_id',profile.id);
+  const ids=(fl||[]).map(f=>f.friend_id);
+  let fdata=[];
+  if(ids.length){
+    const r=await sb.from('profiles').select('id,name,god,job').in('id',ids);
+    fdata=r.data||[];
+  }
+  $('friends-body').innerHTML=`
+    <div style="text-align:center;color:var(--gold2);letter-spacing:4px;margin-bottom:14px">✦ 信 徒 结 识 ✦</div>
+    <div class="card">
+      <div style="display:flex;gap:8px">
+        <input id="fsearch" placeholder="搜索信徒名称……" onkeydown="if(event.key==='Enter')searchPlayer()">
+        <button class="btn sm" style="flex:none" onclick="searchPlayer()">搜索</button>
+      </div>
+      <div id="search-result"></div>
+    </div>
+    ${(reqs&&reqs.length)?`<div class="sec-t">好 友 申 请</div>`+reqs.map(r=>`
+      <div class="me-row"><span>${esc(r.profiles?.name||'未知')} <span class="dim" style="font-size:12px">${esc(r.profiles?.god||'')}·${esc(r.profiles?.job||'')}</span></span>
+      <span style="display:flex;gap:6px">
+        <button onclick="acceptReq(${r.id},'${r.from_id}')">接受</button>
+        <button onclick="rejectReq(${r.id})" style="border-color:rgba(192,57,43,.6);color:#e74c3c">拒绝</button>
+      </span></div>`).join(''):''}
+    <div class="sec-t">我 的 好 友（${fdata.length}）</div>
+    ${fdata.length?fdata.map(f=>`
+      <div class="me-row" style="cursor:pointer" onclick="openDM('${f.id}','${esc(f.name)}')">
+        <span>${esc(f.name)} <span class="dim" style="font-size:12px">${esc(f.god)}·${esc(f.job)}</span></span>
+        <span style="display:flex;gap:6px">
+          <button onclick="event.stopPropagation();inviteTrial('${f.id}','${esc(f.name)}')">邀TA试炼</button>
+          <button onclick="event.stopPropagation();openDM('${f.id}','${esc(f.name)}')">私聊</button>
+        </span>
+      </div>`).join('')
+      :'<div class="card dim" style="text-align:center;padding:20px">还没有好友，搜索名称添加吧</div>'}`;
+}
+async function searchPlayer(){
+  const n=$('fsearch').value.trim();
+  if(!n)return;
+  const {data}=await sb.from('profiles').select('id,name,god,job').ilike('name','%'+n+'%').limit(10);
+  const {data:fl}=await sb.from('friends').select('friend_id').eq('user_id',profile.id);
+  const fids=new Set((fl||[]).map(f=>f.friend_id));
+  const {data:sent}=await sb.from('friend_requests').select('to_id').eq('from_id',profile.id).eq('status','pending');
+  const sids=new Set((sent||[]).map(s=>s.to_id));
+  const list=(data||[]).filter(p=>p.id!==profile.id);
+  $('search-result').innerHTML=list.length?list.map(p=>`
+    <div class="me-row" style="margin-top:8px;margin-bottom:0">
+      <span>${esc(p.name)} <span class="dim" style="font-size:12px">${esc(p.god)}·${esc(p.job)}</span></span>
+      ${fids.has(p.id)?'<span class="dim">已是好友</span>'
+        :sids.has(p.id)?'<span class="dim">已申请</span>'
+        :`<button onclick="sendFriendReq('${p.id}')">加好友</button>`}
+    </div>`).join('')
+    :'<div class="dim" style="margin-top:10px">没有找到该名称的信徒</div>';
+}
+async function sendFriendReq(to){
+  const {error}=await sb.from('friend_requests').insert({from_id:profile.id,to_id:to});
+  if(error){toast('已申请过或对方已申请你');return}
+  toast('好友申请已发送');
+  searchPlayer();
+}
+async function acceptReq(id,from){
+  await sb.from('friend_requests').update({status:'accepted'}).eq('id',id);
+  await sb.from('friends').insert([{user_id:profile.id,friend_id:from},{user_id:from,friend_id:profile.id}]);
+  toast('已成为好友');
+  renderFriends();
+}
+async function rejectReq(id){
+  await sb.from('friend_requests').update({status:'rejected'}).eq('id',id);
+  renderFriends();
+}
+async function openDM(fid,fname){
+  dmFriend={id:fid,name:fname};
+  $('friends-main').style.display='none';
+  $('dm-pane').style.display='flex';
+  $('dm-head').innerHTML=`
+    <button style="background:none;border:none;color:var(--dim);font-family:inherit;font-size:16px" onclick="renderFriends()">←</button>
+    <div style="flex:1">
+      <div style="color:var(--gold2);font-size:16px">${esc(fname)}</div>
+      <div class="dim" style="font-size:11px">私密频道，无人旁观</div>
+    </div>
+    <button style="background:none;border:1px solid rgba(212,175,55,.4);color:var(--gold);border-radius:7px;padding:6px 12px;font-family:inherit;font-size:12px" onclick="inviteTrial('${fid}','${esc(fname)}')">邀TA试炼</button>`;
+  await loadDMs();
+}
+async function loadDMs(){
+  const {data}=await sb.from('dms').select('*')
+    .or(`and(from_id.eq.${profile.id},to_id.eq.${dmFriend.id}),and(from_id.eq.${dmFriend.id},to_id.eq.${profile.id})`)
+    .order('created_at',{ascending:false}).limit(60);
+  $('dm-list').innerHTML='';
+  (data||[]).reverse().forEach(m=>appendDM(m));
+}
+function appendDM(m){
+  const mine=m.from_id===profile.id;
+  const div=document.createElement('div');
+  div.className='msg'+(mine?' me':'');
+  const body=m.kind==='invite'
+    ?`<div class="bub" style="border-color:rgba(155,89,182,.6)">⚔ ${esc(m.content)}</div>`
+    :`<div class="bub">${esc(m.content)}</div>`;
+  div.innerHTML=`<div class="who">${mine?'我':esc(dmFriend?.name||'')}</div>${body}<div class="time">${fmtTime(m.created_at)}</div>`;
+  const list=$('dm-list');
+  list.appendChild(div);
+  list.scrollTop=list.scrollHeight;
+}
+async function sendDM(){
+  const c=$('dm-input').value.trim();
+  if(!c||!dmFriend)return;
+  $('dm-input').value='';
+  const {error}=await sb.from('dms').insert({from_id:profile.id,to_id:dmFriend.id,content:c});
+  if(error)toast(error.message);
+}
+async function inviteTrial(fid,fname){
+  const {data:done}=await sb.from('trials_done').select('trial_key').eq('user_id',profile.id);
+  const doneKeys=new Set((done||[]).map(d=>d.trial_key));
+  const avail=OFFICIAL_TRIALS.filter(t=>!doneKeys.has(t.key));
+  if(!avail.length){toast('你已通关全部官方试炼');return}
+  const t=avail[Math.floor(Math.random()*avail.length)];
+  const {error}=await sb.from('dms').insert({from_id:profile.id,to_id:fid,content:`${profile.name} 邀请你挑战个人试炼《${t.title}》，去试炼页寻找它吧`,kind:'invite'});
+  if(error){toast(error.message);return}
+  toast(`已向 ${fname} 发出试炼邀请`);
+}
+
+/* ---------- 计分 ---------- */
+async function addScore(road,ladder){
+  profile.ladder=(profile.ladder??1000)+road;
+  profile.divine_road=(profile.divine_road??0)+ladder;
+  await sb.from('profiles').update({ladder:profile.ladder,divine_road:profile.divine_road}).eq('id',profile.id);
+}
+
+boot();
+</script>
+</body>
+</html>
